@@ -25,9 +25,9 @@ class MyGame(arcade.Window):
         self.water_list = None
 
         # Set up the player
-        self.player_sprite = None
-        self.boat2 = None
-        self.boat3 = None
+        self.cake1 = None
+        self.cake2 = None
+        self.cake3 = None
 
         # This variable holds our simple "physics engine"
         self.physics_engine = None
@@ -42,20 +42,20 @@ class MyGame(arcade.Window):
         self.score = 0
 
         # Create the player
-        self.player_sprite = arcade.Sprite("kenney_watercraft-pack/Previews/ship-ocean-liner.png", SPRITE_SCALING_PLAYER)
-        self.player_sprite.center_x = 50
-        self.player_sprite.center_y = 64
-        self.player_list.append(self.player_sprite)
+        self.cake1 = arcade.Sprite("kenney_watercraft-pack/Previews/ship-ocean-liner.png", SPRITE_SCALING_PLAYER)
+        self.cake1.center_x = 50
+        self.cake1.center_y = 64
+        self.player_list.append(self.cake1)
 
-        self.boat2 = arcade.Sprite("kenney_watercraft-pack/Previews/boat-tug-a.png", SPRITE_SCALING_PLAYER)
-        self.boat2.center_x = 250
-        self.boat2.center_y = 500
-        self.player_list.append(self.boat2)
+        self.cake2 = arcade.Sprite("arcade/Previews/cake-birthday.png", SPRITE_SCALING_PLAYER)
+        self.cake2.center_x = 250
+        self.cake2.center_y = 500
+        self.player_list.append(self.cake2)
 
-        self.boat3 = arcade.Sprite("kenney_watercraft-pack/Previews/boat-sail-a.png", SPRITE_SCALING_PLAYER)
-        self.boat3.center_x = 600
-        self.boat3.center_y = 256
-        self.player_list.append(self.boat3)
+        self.cake3 = arcade.Sprite("kenney_watercraft-pack/Previews/boat-sail-a.png", SPRITE_SCALING_PLAYER)
+        self.cake3.center_x = 600
+        self.cake3.center_y = 256
+        self.player_list.append(self.cake3)
 
 
         for x in range(0, 800, 64):
@@ -77,31 +77,31 @@ class MyGame(arcade.Window):
 
     def on_update(self, delta_time):
         # --- Gestion du Joueur ---
-        self.player_sprite.center_y += 1
-        self.player_sprite.center_x += 1
+        self.cake1.center_y += 1
+        self.cake1.center_x += 1
 
         # Si le joueur sort par la droite, on le remet à gauche
-        if self.player_sprite.left > SCREEN_WIDTH:
-            self.player_sprite.right = 0
+        if self.cake1.left > SCREEN_WIDTH:
+            self.cake1.right = 0
         # Si le joueur sort par le haut, on le remet en bas
-        if self.player_sprite.bottom > SCREEN_HEIGHT:
-            self.player_sprite.top = 0
+        if self.cake1.bottom > SCREEN_HEIGHT:
+            self.cake1.top = 0
 
         # --- Gestion du Bateau 2 (vers la droite) ---
-        self.boat2.center_x += 2
-        if self.boat2.left > SCREEN_WIDTH:
-            self.boat2.right = 0
+        self.cake2.center_x += 2
+        if self.cake2.left > SCREEN_WIDTH:
+            self.cake2.right = 0
 
         # --- Gestion du Bateau 3 (diagonale haut-gauche) ---
-        self.boat3.center_y += 1
-        self.boat3.center_x -= 1
+        self.cake3.center_y += 1
+        self.cake3.center_x -= 1
 
         # S'il sort par le haut
-        if self.boat3.bottom > SCREEN_HEIGHT:
-            self.boat3.top = 0
+        if self.cake3.bottom > SCREEN_HEIGHT:
+            self.cake3.top = 0
         # S'il sort par la gauche
-        if self.boat3.right < 0:
-            self.boat3.left = SCREEN_WIDTH
+        if self.cake3.right < 0:
+            self.cake3.left = SCREEN_WIDTH
 
 
 
