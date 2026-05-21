@@ -1,41 +1,29 @@
 from pathlib import Path
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field
+from loader import Loader
+import re
 
 
-class Loader:
-    def load_file(self, file_path: str) -> Any:
-        """
-        Loads a configuration file.
-        Handles cases: missing file, empty file, permission error
-        """
-        path = Path(file_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Missing file: '{path.name}' not found")
+class MapParser:
+    def split_lines(self, raw_input: Loader):
+        lines = raw_input.split("\n")
+        return lines
 
-        if not path.is_file():
-            raise ValueError(f"'{file_path}' is not a regular file")
+    def clean_lines(self, lines: list[str]) -> str:
+        self.clean_lines = []
+        for line in lines:
+            clean_line = line.split("#")[0].strip()
+            if not clean_line == "":
+                self.clean_lines.append(clean_line)
+        return self.clean_lines
 
-        try:
-            with open(path, mode="r", encoding="utf-8") as f:
-                content = f.read().strip()
-        except PermissionError:
-            raise PermissionError(
-                f"You don't have permission for the directory '{path.parent}'"
-                f"or for the file'{path.name}'"
-            )
+    def get_raw_dict(self, clean_lines: list[str]):
+        for clean_line in clean_lines:
 
-        if not content:
-            raise ValueError(f"file '{path.name} is empty.")
 
-        return (content)
 
-class Parameters(BaseModel):
-    nb_drones: int = Field(..., ge=1)
-    start_hub: list[str, int, int] = Field(...)
-    end_hub: list[str, int, int] = Field(...)
-    hub: list[str, int, int] = Field(...)
-    connection: str = Field(min_length=1)
+
+
 
 
 

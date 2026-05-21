@@ -1,8 +1,20 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  fly_in.py                                         :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
+#  Updated: 2026/05/21 14:42:02 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
+
 import sys
 from pydantic import ValidationError
 from loader import Loader
 from parser import MapParser
-from models import MapConfigModel
+# from models import MapConfigModel
 
 
 def main() -> None:
@@ -14,9 +26,11 @@ def main() -> None:
 
     loader = Loader()
     try:
-        raw_text = loader.load_file(map_file)
-        raw_dict = MapParser().parse(raw_text)
-        validated_param = MapConfigModel(**raw_dict)
+        raw_input = loader.load_file(map_file)
+        lines = MapParser().split_lines(raw_input)
+        clean_lines = MapParser().clean_lines(lines)
+        print(f"{clean_lines}\n")
+        # validated_param = MapConfigModel(**raw_dict)
     except (FileNotFoundError, IsADirectoryError) as e:
         print(f"\033[91m[FILE ERROR]\033[0m {e}")
         sys.exit(1)
