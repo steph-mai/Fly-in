@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/21 14:42:02 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/22 09:08:10 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -25,10 +25,11 @@ def main() -> None:
     map_file = sys.argv[1]
 
     loader = Loader()
+    parser = MapParser()
+
     try:
         raw_input = loader.load_file(map_file)
-        lines = MapParser().split_lines(raw_input)
-        clean_lines = MapParser().clean_lines(lines)
+        clean_lines = parser.parse(raw_input)
         print(f"{clean_lines}\n")
         # validated_param = MapConfigModel(**raw_dict)
     except (FileNotFoundError, IsADirectoryError) as e:
