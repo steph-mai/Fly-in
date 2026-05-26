@@ -93,8 +93,8 @@ class MapConfigModel(BaseModel):
         start_zone_lines: list[int] = []
         end_zone_lines: list[int] = []
         zones_names: set[str] = set()
-        seen_zone_coord: set[tuple] = set()
-        seen_connection: set[tuple] = set()
+        seen_zone_coord: set[tuple[int, int]] = set()
+        seen_connection: set[tuple[str, str]] = set()
 
         for zone in self.zones:
             if zone.name in zones_names:
@@ -102,8 +102,10 @@ class MapConfigModel(BaseModel):
                                  f"zone name '{zone.name}' more than once.")
             zones_names.add(zone.name)
             if zone.is_start is True:
-                if (zone.max_drones is not None
-                    and zone.max_drones < self.nb_drones):
+                if (
+                    zone.max_drones is not None
+                    and zone.max_drones < self.nb_drones
+                ):
                     raise ValueError(f"Line {zone.line_num}: "
                                      f"start_zone capacity "
                                      f"(max_drones= {zone.max_drones})"
@@ -121,9 +123,9 @@ class MapConfigModel(BaseModel):
         number_start_zones: int = len(start_zone_lines)
         number_end_zones: int = len(end_zone_lines)
         if number_start_zones == 0:
-            raise ValueError("There is no start_zone in map.")
+            raise ValueError("There is no start_hub in the map.")
         if number_end_zones == 0:
-            raise ValueError("There is no end_zone in map.")
+            raise ValueError("There is no end_hub in the map.")
         if number_start_zones > 1:
             raise ValueError(
                 f"There must be exactly one start_hub. "

@@ -110,8 +110,9 @@ class MapParser:
 
             else:
                 raise ValueError(
-                    f"Line {line_num}: Invalid key in '{clean_line}'. Authorized "
-                    "keys are 'start_hub:', 'hub:', 'end_hub:', 'connection:'"
+                    f"Line {line_num}: Invalid key in '{clean_line}'."
+                    f"Authorized keys are "
+                    f"'start_hub:', 'hub:', 'end_hub:', 'connection:'"
                 )
 
         return raw_dict

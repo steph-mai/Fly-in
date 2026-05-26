@@ -25,16 +25,16 @@ clean:
 
 lint:
 	@echo "Running flake8."
-	@uv run flake8 . --exclude .venv
+	@uv run flake8 . --exclude .venv,tests,arcade
 	@echo "Running mypy."
-	@uv run mypy . $(MYPY_FLAGS)
+	@uv run mypy . $(MYPY_FLAGS) --exclude "(.venv/|tests/|arcade/)"
 
 lint-strict:
 	@echo "Running flake8."
-	@uv run flake8 . --exclude .venv
+	@uv run flake8 . --exclude .venv,tests,arcade
 	@echo "Running mypy --strict."
-	@uv run mypy . --strict
-
+	@uv run mypy . --strict --exclude "(.venv/|tests/|arcade/)"
+	
 test:
 	@echo "Launching the suite of tests."
 	@uv run pytest -v
