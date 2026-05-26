@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/22 09:08:10 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/26 15:01:35 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -14,7 +14,7 @@ import sys
 from pydantic import ValidationError
 from loader import Loader
 from parser import MapParser
-# from models import MapConfigModel
+from models import MapConfigModel
 
 
 def main() -> None:
@@ -29,20 +29,27 @@ def main() -> None:
 
     try:
         raw_input = loader.load_file(map_file)
-        clean_lines = parser.parse(raw_input)
-        print(f"{clean_lines}\n")
-        # validated_param = MapConfigModel(**raw_dict)
+        raw_dict = parser.parse(raw_input)
+        print(f"Parsed dict\n "
+              f"{raw_dict}\n")
+        valid_map = MapConfigModel(**raw_dict)
+        print(f"Valid Map\n"
+              f"{valid_map}")
+
     except (FileNotFoundError, IsADirectoryError) as e:
         print(f"\033[91m[FILE ERROR]\033[0m {e}")
         sys.exit(1)
     except PermissionError as e:
         print(f"\033[91m[PERMISSION ERROR]\033[0m {e}")
         sys.exit(1)
+    except ValidationError as e:
+        error = e.errors()[0]
+        raw_message = error["msg"]
+        clean_message = raw_message.replace("Value error,", "")
+        print(f"\033[91m[VALUE ERROR]\033[0m {clean_message}")
+        sys.exit(1)
     except ValueError as e:
         print(f"\033[91m[VALUE ERROR]\033[0m {e}")
-        sys.exit(1)
-    except ValidationError as e:
-        print(f"\033[91m[INVALID MAP ERROR]\033[0m {e}")
         sys.exit(1)
     except Exception as e:
         print(f"\033[91m[ERROR]\033[0m {e}")

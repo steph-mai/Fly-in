@@ -14,9 +14,12 @@ class MapParser:
         """Initializes the MapParser with pre-compiled regular expressions."""
         self.hub_pattern = re.compile(
             r"^\s*(start_hub|end_hub|hub):\s*"
-            r"([^\s\-]+)\s+(-?\d+)\s+"
-            r"(-?\d+)(?:\s+\[(.*?)\])?\s*$"
+            r"([^\s\-]+)\s+"
+            r"(-?\d+)\s+"
+            r"(-?\d+)"
+            r"(?:\s+\[(.*?)\])?\s*$"
             )
+
         self.connection_pattern = re.compile(
             r"^\s*connection:\s*"
             r"([^\s\-]+)-([^\s\-]+)"
@@ -42,56 +45,51 @@ class MapParser:
         return self._get_raw_dict(clean_lines)
 
     @staticmethod
-    def _clean_lines(raw_text: str) -> list[str]:
+    def _clean_lines(raw_text: str) -> list[tuple[int, str]]:
         """
-        Removes comments and empty lines from the raw text.
+        Removes comments and empty lines, preserving original line numbers.
 
         Args:
             raw_text (str): The raw text content.
 
         Returns:
-            list[str]: A list of valid strings stripped of whitespace
-            and comments.
+            list[tuple[int, str]]: A list of tuples containing the original
+                1-indexed line number and the cleaned string.
         """
         raw_lines = raw_text.split("\n")
         clean_lines = []
-        for line in raw_lines:
+
+        for line_num, line in enumerate(raw_lines, start=1):
             clean_line = line.split("#")[0].strip()
             if clean_line:
-                clean_lines.append(clean_line)
+                clean_lines.append((line_num, clean_line))
+
         return clean_lines
 
-    def _get_raw_dict(self, clean_lines: list[str]) -> dict[str, Any]:
+    def _get_raw_dict(
+            self, clean_lines: list[tuple[int, str]]) -> dict[str, Any]:
         """
         Analyzes valid lines to build the master dictionary structure.
 
-        Iterates through the cleaned lines, matches them against the expected
-        syntax patterns for map definitions, and extracts metadata.
-
         Args:
-            clean_lines (list[str]): The cleaned lines to process.
+            clean_lines (list[tuple[int, str]]): The cleaned lines with their
+                original line numbers.
 
         Returns:
-            dict[str, Any]: The fully populated dictionary representation
-            of the map.
+            dict[str, Any]: The fully dictionary representation of the map.
 
         Raises:
-            ValueError: If the file is empty, misses the 'nb_drones' header,
-                contains syntax errors, or includes forbidden metadata keys.
+            ValueError: If the file is empty or contains formatting errors.
         """
-        raw_dict = {
-            "nb_drones": 0,
-            "zones": [],
-            "connections": []
-        }
         if not clean_lines:
-            raise ValueError("The map file is empty.")
+            raise ValueError("Line 1: The map file is empty.")
 
-        first_line = clean_lines[0]
+        first_line_num, first_line = clean_lines[0]
+
         if not first_line.startswith("nb_drones:"):
             raise ValueError(
-                "The first line must define the number of drones "
-                "using nb_drones: <positive_integer>"
+                f"Line {first_line_num}: The first line must define the "
+                "number of drones using nb_drones: <positive_integer>"
             )
 
         raw_dict: dict[str, Any] = {
@@ -100,46 +98,42 @@ class MapParser:
             "connections": []
         }
 
-        for clean_line in clean_lines[1:]:
+        for line_num, clean_line in clean_lines[1:]:
+
             if clean_line.startswith("connection:"):
-                connection_dict = self._parse_connection(clean_line)
+                connection_dict = self._parse_connection(clean_line, line_num)
                 raw_dict["connections"].append(connection_dict)
 
             elif clean_line.startswith(("hub:", "start_hub:", "end_hub:")):
-                zone_dict = self._parse_zone(clean_line)
+                zone_dict = self._parse_zone(clean_line, line_num)
                 raw_dict["zones"].append(zone_dict)
 
             else:
                 raise ValueError(
-                    f"Invalid key on line '{clean_line}'. Authorized keys are "
-                    "'start_hub:', 'hub:', 'end_hub:', 'connection:'"
+                    f"Line {line_num}: Invalid key in '{clean_line}'. Authorized "
+                    "keys are 'start_hub:', 'hub:', 'end_hub:', 'connection:'"
                 )
 
         return raw_dict
 
-    def _parse_connection(self, line: str) -> dict[str, Any]:
+    def _parse_connection(self, line: str, line_num: int) -> dict[str, Any]:
         """
-        Parses a single line representing a connection
-        and extracts its attributes.
+        Parses a single line representing a connection and extracts
+        its attributes.
 
         Args:
             line (str): The raw string line starting with 'connection:'.
+            line_num (int): The original line number for error reporting.
 
         Returns:
-            dict[str, Any]: A dictionary containing 'zone1', 'zone2', and
-                'max_link_capacity' (defaulting to 1 if not specified).
-
-        Raises:
-            ValueError: If the connection syntax is invalid,
-            if the max_link_capacity is empty or invalid,
-            or if forbidden metadata keys are present.
+            dict[str, Any]: A dictionary containing connection data.
         """
         match = self.connection_pattern.match(line)
         if match is None:
             raise ValueError(
-                f"Syntax error: Invalid connection entry '{line}'. "
+                f"Line {line_num}: Syntax error in connection entry '{line}'. "
                 "Usage = connection: <name1>-<name2> [metadata]. "
-                "Dashes forbidden in names."
+                "Dashes forbidden."
             )
 
         name1, name2, raw_metadata = match.groups()
@@ -150,43 +144,43 @@ class MapParser:
         }
 
         if raw_metadata:
-            if "max_link_capacity" in raw_metadata:
-                max_cap = raw_metadata.split("=")[1].strip()
-                if not max_cap:
-                    raise ValueError("Invalid value for max_link_capacity.")
-                connection_dict["max_link_capacity"] = max_cap
-            else:
+            supposed_metadata = raw_metadata.split()
+            if len(supposed_metadata) > 1:
+                raise ValueError(f"Line {line_num}: 'max_link_capacity' "
+                                 f"is the only valid metadata key")
+
+            connection_pattern = r"^(max_link_capacity)=([\d]+)"
+            match_metadata = re.fullmatch(
+                connection_pattern, supposed_metadata[0])
+            if not match_metadata:
                 raise ValueError(
-                    "Forbidden key in connection metadata. "
-                    "Authorized key: 'max_link_capacity'"
+                    f"Line {line_num}: Invalid metadata syntax. "
+                    "Usage: 'max_link_capacity=integer'."
                 )
+            key, value = match_metadata.groups()
+            connection_dict[key] = value
+
+        connection_dict["line_num"] = line_num
 
         return connection_dict
 
-    def _parse_zone(self, line: str) -> dict[str, Any]:
+    def _parse_zone(self, line: str, line_num: int) -> dict[str, Any]:
         """
-        Parses a single line representing a zone and extracts its coordinates
-        and metadata.
+        Parses a single line representing a zone and extracts its data.
 
         Args:
-            line (str): The raw string line starting with 'hub:', 'start_hub:',
-                or 'end_hub:'.
+            line (str): The raw string line starting with a hub keyword.
+            line_num (int): The original line number for error reporting.
 
         Returns:
-            dict[str, Any]:A dictionary containing the zone's 'name', 'x' and
-            'y' coordinates, 'is_start' and 'is_end' boolean flags, along with
-            any authorized metadata (e.g., 'color', 'max_drones', 'zone').
-
-        Raises:
-            ValueError: If the zone syntax is invalid, or if forbidden metadata
-                keys are included in the definition.
+            dict[str, Any]: A dictionary containing zone data.
         """
         match = self.hub_pattern.match(line)
         if not match:
             raise ValueError(
-                f"Syntax error: Invalid hub entry '{line}'. "
-                "Usage = hub: <name> <x> <y> [metadata]. "
-                "Dashes forbidden in name."
+                f"Line {line_num}: Syntax error in hub entry '{line}'. "
+                "Usage = hub: <name> <x> <y> [metadata]."
+                "Dashes forbidden."
             )
 
         hub_type, name, x, y, raw_metadata = match.groups()
@@ -199,13 +193,23 @@ class MapParser:
         }
 
         if raw_metadata:
-            metadata_list = self.metadata_pattern.findall(raw_metadata)
+            raw__metadata_list = raw_metadata.split()
             authorized_metadata = ["color", "max_drones", "zone"]
-            for key, value in metadata_list:
+
+            for supposed_metadata in raw__metadata_list:
+                match_metadata = self.metadata_pattern.fullmatch(
+                    supposed_metadata)
+                if not match_metadata:
+                    raise ValueError(f"Line {line_num}: Invalid metadata "
+                                     F"syntax '{supposed_metadata}' "
+                                     f"Usage: 'key=value'")
+                key, value = match_metadata.groups()
                 if key in authorized_metadata:
                     zone_dict[key] = value
                 else:
-                    raise ValueError(
-                        f"Forbidden metadata key '{key}' in zone.")
+                    raise ValueError(f"Line {line_num}: "
+                                     f"Forbidden metadata key "
+                                     f"'{key}'.")
+        zone_dict["line_num"] = line_num
 
         return zone_dict
