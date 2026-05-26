@@ -1,3 +1,15 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  models.py                                         :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
+#  Updated: 2026/05/26 17:40:33 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Literal
 
