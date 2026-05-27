@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/26 15:01:35 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/27 13:54:52 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -15,6 +15,8 @@ from pydantic import ValidationError
 from loader import Loader
 from parser import MapParser
 from models import MapConfigModel
+from map_graph import MapGraph
+from simulation import Simulation
 
 
 def main() -> None:
@@ -30,11 +32,18 @@ def main() -> None:
     try:
         raw_input = loader.load_file(map_file)
         raw_dict = parser.parse(raw_input)
-        print(f"Parsed dict\n "
-              f"{raw_dict}\n")
         valid_map = MapConfigModel(**raw_dict)
         print(f"Valid Map\n"
               f"{valid_map}")
+        graph_adj = MapGraph(valid_map)
+        for zone in valid_map.zones:
+            print(f"{zone.name} neighbours:\n {graph_adj.get_neighbours(
+                zone.name)}")
+            infos = graph_adj.get_zone_infos(zone.name)
+            if infos is not None:
+                print(f"{zone.name} infos:\n x = {infos.x}")
+        simulation = Simulation(valid_map)
+        simulation.display_status()
 
     except (FileNotFoundError, IsADirectoryError) as e:
         print(f"\033[91m[FILE ERROR]\033[0m {e}")

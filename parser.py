@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/26 17:40:41 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/27 17:05:39 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -23,7 +23,6 @@ class MapParser:
     dictionary ready for validation.
     """
     def __init__(self) -> None:
-        """Initializes the MapParser with pre-compiled regular expressions."""
         self.hub_pattern = re.compile(
             r"^\s*(start_hub|end_hub|hub):\s*"
             r"([^\s\-]+)\s+"
@@ -209,6 +208,7 @@ class MapParser:
             raw__metadata_list = raw_metadata.split()
             authorized_metadata = ["color", "max_drones", "zone"]
 
+            zone_dict['max_drones'] = 1
             for supposed_metadata in raw__metadata_list:
                 match_metadata = self.metadata_pattern.fullmatch(
                     supposed_metadata)
