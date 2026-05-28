@@ -34,7 +34,8 @@ class Simulation:
             max_capacity = zone_infos.max_drones  # TODO live coding
             print(f"{zone_name}: {self.hub_occupancy[zone_name]}"
                   f"/{max_capacity}")
-            print(f"There is enough place: {self.is_enough_place_in_zone(zone_name)}")
+            print(f"There is enough place: "
+                  f"{self.is_enough_place_in_zone(zone_name)}")
 
         print("\nConnection occupancy:\n")
 
@@ -53,7 +54,7 @@ class Simulation:
                     displayed_connections.add(duo_zones)
                     print(f"{duo_zones}: connection occupancy: "
                           f"{total_drones_in_connection}/{max_link_capacity}")
-                    
+
 
     def is_enough_place_in_zone(self, zone_name: str) -> bool:
         zone_infos = self.map_graph.zones[zone_name]
@@ -66,14 +67,15 @@ class Simulation:
         """
         Checks if a bidirectional connection has enough remaining capacity.
 
-        Takes into account drones flying in both directions (zone1->zone2 and zone2->zone1).
+        Takes into account drones flying in both directions
+        (zone1->zone2 and zone2->zone1).
         """
         neighbours = self.map_graph.get_neighbours(zone1)
         max_link_capacity = neighbours.get(zone2, 0)
 
         current_drones_going = self.connection_occupancy[(zone1, zone2)]
         current_drones_returning = self.connection_occupancy[(zone2, zone1)]
-        total_drones_in_flight = current_drones_going + current_drones_returning
+        total_drones_in_flight = (
+            current_drones_going + current_drones_returning)
 
         return total_drones_in_flight < max_link_capacity
-

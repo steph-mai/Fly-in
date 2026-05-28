@@ -3,10 +3,10 @@
 #                                                      :::      ::::::::    #
 #  parser.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/27 17:05:39 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/28 10:11:01 by stephanie       ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -117,6 +117,8 @@ class MapParser:
 
             elif clean_line.startswith(("hub:", "start_hub:", "end_hub:")):
                 zone_dict = self._parse_zone(clean_line, line_num)
+                if zone_dict["is_start"] is True:
+                    zone_dict['max_drones'] = raw_dict["nb_drones"]
                 raw_dict["zones"].append(zone_dict)
 
             else:
@@ -204,11 +206,12 @@ class MapParser:
             "is_end": hub_type == "end_hub"
         }
 
+        zone_dict['max_drones'] = 1
+
         if raw_metadata:
             raw__metadata_list = raw_metadata.split()
             authorized_metadata = ["color", "max_drones", "zone"]
 
-            zone_dict['max_drones'] = 1
             for supposed_metadata in raw__metadata_list:
                 match_metadata = self.metadata_pattern.fullmatch(
                     supposed_metadata)
@@ -223,6 +226,7 @@ class MapParser:
                     raise ValueError(f"Line {line_num}: "
                                      f"Forbidden metadata key "
                                      f"'{key}'.")
+
         zone_dict["line_num"] = line_num
 
         return zone_dict
