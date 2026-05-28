@@ -4,9 +4,13 @@ version = "0.1.0"
 description = "drone routing systeme"
 requires-python = ">=3.10"
 dependencies = [
-	"pydantic>=2.0.0",
-	"pytest",
-	"flake8",
-	"mypy",
-	"arcade"
+    "pydantic>=2.0.0",
+    "arcade>=2.6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "flake8",
+    "mypy",
 ]

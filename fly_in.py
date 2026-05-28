@@ -3,38 +3,31 @@
 #                                                      :::      ::::::::    #
 #  fly_in.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/26 15:01:35 by stmaire         ###   ########.fr        #
+#  Updated: 2026/05/28 17:49:04 by stephanie       ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
+import arcade
 import sys
+from menu_view import MenuView
 from pydantic import ValidationError
-from loader import Loader
-from parser import MapParser
-from models import MapConfigModel
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        print("Usage: python3 fly_in.py <maps/map_file>")
-        sys.exit(1)
-
-    map_file = sys.argv[1]
-
-    loader = Loader()
-    parser = MapParser()
-
     try:
-        raw_input = loader.load_file(map_file)
-        raw_dict = parser.parse(raw_input)
-        print(f"Parsed dict\n "
-              f"{raw_dict}\n")
-        valid_map = MapConfigModel(**raw_dict)
-        print(f"Valid Map\n"
-              f"{valid_map}")
+        print("Launching graphical map viewer...")
+        # 1. Création de la fenêtre principale unique
+        window = arcade.Window(1280, 720, "Fly-in Simulation")
+
+        # 2. On instancie et on affiche le menu de démarrage
+        start_view = MenuView()
+        window.show_view(start_view)
+
+        # 3. On lance la boucle de jeu
+        arcade.run()
 
     except (FileNotFoundError, IsADirectoryError) as e:
         print(f"\033[91m[FILE ERROR]\033[0m {e}")
