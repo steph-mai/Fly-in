@@ -1,5 +1,5 @@
-from map_graph import MapGraph
-from models import MapConfigModel
+from src.map_graph import MapGraph
+from src.models import MapConfigModel
 from collections import defaultdict
 
 
@@ -54,7 +54,6 @@ class Simulation:
                     displayed_connections.add(duo_zones)
                     print(f"{duo_zones}: connection occupancy: "
                           f"{total_drones_in_connection}/{max_link_capacity}")
-
 
     def is_enough_place_in_zone(self, zone_name: str) -> bool:
         zone_infos = self.map_graph.zones[zone_name]

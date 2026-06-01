@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/26 17:40:33 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/01 15:33:17 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -47,7 +47,7 @@ class Zone(BaseModel):
     is_end: bool
     zone: Literal['normal', 'blocked', 'restricted', 'priority'] = 'normal'
     color: str | None = None
-    max_drones: int | None = Field(default=None, ge=1)
+    max_drones: int = Field(default=1, ge=1)
     line_num: int = Field(exclude=True)
 
 
