@@ -76,3 +76,5 @@ class MapGraph:
         """
         infos_zone = self.zones.get(zone_name)
         return infos_zone
+
+    def find_best_path(self, start_name: str, end_name: str, blocked_zones)
