@@ -1,4 +1,4 @@
-from models import MapConfigModel, Zone
+from src.models import MapConfigModel, Zone
 from collections import defaultdict
 
 

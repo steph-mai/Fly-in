@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 # Make sure this import matches the name of your file containing the models
-from models import MapConfigModel
+from src.models import MapConfigModel
 
 
 # ==========================================

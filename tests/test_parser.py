@@ -1,5 +1,5 @@
 import pytest
-from parser import MapParser  # Adapt the import according to your file name
+from src.parser import MapParser  # Adapt the import according to your file name
 
 # ==========================================
 # FIXTURES (Initial Configuration)

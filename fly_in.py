@@ -3,26 +3,23 @@
 #                                                      :::      ::::::::    #
 #  fly_in.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/28 17:49:04 by stephanie       ###   ########.fr        #
+#  Updated: 2026/06/01 14:38:04 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
 import arcade
 import sys
-from menu_view import MenuView
+from src.menu_view import MenuView
 from pydantic import ValidationError
 
 
 def main() -> None:
     try:
         print("Launching graphical map viewer...")
-        # 1. Création de la fenêtre principale unique
         window = arcade.Window(1280, 720, "Fly-in Simulation")
-
-        # 2. On instancie et on affiche le menu de démarrage
         start_view = MenuView()
         window.show_view(start_view)
 
