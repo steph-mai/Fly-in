@@ -90,7 +90,7 @@ class MapController(arcade.View):
         }
 
         back_button = arcade.gui.UIFlatButton(
-            text="<- Menu", width=180, style=button_style)
+            text="<- Menu", width=70, height=30, style=button_style)
 
         @back_button.event("on_click")
         def on_click(
@@ -102,8 +102,8 @@ class MapController(arcade.View):
             child=back_button,
             anchor_x="left",
             anchor_y="top",
-            align_x=20,
-            align_y=-20)
+            align_x=5,
+            align_y=-5)
         self.manager.add(self.anchor_layout)
 
     def go_back_to_menu(self) -> None:

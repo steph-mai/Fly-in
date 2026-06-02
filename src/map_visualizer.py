@@ -225,7 +225,7 @@ class MapVisualizer:
         # fait ramer la carte graphique
         displayed_links = set()
         for zone_name in self.sim.map_graph.graph_adj:
-            neighbors = self.sim.map_graph.get_neighbours(zone_name)
+            neighbors = self.sim.map_graph.get_neighbors(zone_name)
             zone_from = self.sim.map_graph.zones[zone_name]
 
             for neighbor_name in neighbors:

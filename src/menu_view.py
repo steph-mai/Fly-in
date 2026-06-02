@@ -172,7 +172,7 @@ class MenuView(arcade.View):
         }
 
         back_button = arcade.gui.UIFlatButton(
-            text="<- Retour", width=150, height=45, style=back_style
+            text="<- Return", width=150, height=45, style=back_style
         )
 
         @back_button.event("on_click")
