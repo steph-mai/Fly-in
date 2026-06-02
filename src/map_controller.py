@@ -5,12 +5,8 @@ Acts as the controller between the simulation data, the UI elements,
 and the rendering engine.
 """
 
-from pathlib import Path
 import arcade
 import arcade.gui
-from src.loader import Loader
-from src.parser import MapParser
-from src.models import MapConfigModel
 from src.simulation import Simulation
 from src.map_visualizer import MapVisualizer
 
@@ -20,38 +16,29 @@ class MapController(arcade.View):
     View handling the map simulation display and user interface.
 
     Attributes:
-        map_file_path (Path): The path to the selected map configuration file.
         sim (Simulation): The active simulation instance.
         visualizer (MapVisualizer): The rendering engine for the map visuals.
         manager (arcade.gui.UIManager): The UI manager for interactive buttons.
     """
 
-    def __init__(self, map_file_path: Path) -> None:
+    def __init__(self, sim: Simulation) -> None:
         """
-        Initialize the map view, load the simulation, and configure the window.
+        Initialize the map view with a pre-loaded simulation and configure the window.
         """
         super().__init__()
-        self.map_file_path = map_file_path
 
-        loader = Loader()
-        parser = MapParser()
-        raw_input = loader.load_file(str(self.map_file_path))
-        raw_dict = parser.parse(raw_input)
-        valid_map = MapConfigModel(**raw_dict)
-
-        self.sim = Simulation(valid_map)
+        # 1. On reçoit la simulation déjà chargée et validée !
+        self.sim = sim
         self.sim.display_status()
 
+        # 2. Le reste de ta logique de calcul de taille d'écran ne change pas
         x_coords = [zone.x for zone in self.sim.map_graph.zones.values()]
         y_coords = [zone.y for zone in self.sim.map_graph.zones.values()]
 
         map_width_units = (
-            max(
-                x_coords) if x_coords else 1) - (
-                    min(x_coords) if x_coords else 0)
+            max(x_coords) if x_coords else 1) - (min(x_coords) if x_coords else 0)
         map_height_units = (
-            max(y_coords) if y_coords else 1) - (
-                min(y_coords) if y_coords else 0)
+            max(y_coords) if y_coords else 1) - (min(y_coords) if y_coords else 0)
 
         map_width_units = max(1, map_width_units)
         map_height_units = max(1, map_height_units)
@@ -84,8 +71,7 @@ class MapController(arcade.View):
 
         button_style = {
             "normal": {"bg": arcade.color.COOL_GREY, "fg": arcade.color.BLACK},
-            "hover": {
-                "bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
+            "hover": {"bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
             "press": {"bg": arcade.color.DARK_BLUE, "fg": arcade.color.WHITE}
         }
 
@@ -93,9 +79,7 @@ class MapController(arcade.View):
             text="<- Menu", width=70, height=30, style=button_style)
 
         @back_button.event("on_click")
-        def on_click(
-            event: arcade.gui.UIEvent
-        ) -> None:
+        def on_click(event: arcade.gui.UIEvent) -> None:
             self.go_back_to_menu()
 
         self.anchor_layout.add(
@@ -112,12 +96,11 @@ class MapController(arcade.View):
 
         # Local import to prevent circular dependency issues
         from src.menu_view import MenuView
-        self.window.show_view(MenuView())
+        if self.window:
+            self.window.show_view(MenuView())
 
     def on_draw(self) -> None:
         """Render the map graphics and the UI overlay at 60 FPS."""
         self.clear()
-
         self.visualizer.draw_everything()
-
         self.manager.draw()
