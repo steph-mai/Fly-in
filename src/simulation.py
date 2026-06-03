@@ -47,14 +47,14 @@ class Simulation:
 
         # print("Hubs occupancy:\n")
 
-        for zone_name, zone_infos in self.map_graph.zones.items():
-            max_capacity = zone_infos.max_drones  # TODO live coding
-            print(f"{zone_name}: {self.hub_occupancy[zone_name]}"
-                  f"/{max_capacity}")
-            print(f"There is enough place: "
-                  f"{self._is_enough_place_in_zone(zone_name)}")
+        # for zone_name, zone_infos in self.map_graph.zones.items():
+        #     max_capacity = zone_infos.max_drones  # TODO live coding
+        #     print(f"{zone_name}: {self.hub_occupancy[zone_name]}"
+        #           f"/{max_capacity}")
+        #     print(f"There is enough place: "
+        #           f"{self._is_enough_place_in_zone(zone_name)}")
 
-        print("\nConnection occupancy:\n")
+        # print("\nConnection occupancy:\n")
 
         displayed_connections = set()
         for zone_name in self.map_graph.graph_adj:
@@ -69,8 +69,8 @@ class Simulation:
                     total_drones_in_connection = (
                         current_drones_going + current_drones_returning)
                     displayed_connections.add(duo_zones)
-                    print(f"{duo_zones}: connection occupancy: "
-                          f"{total_drones_in_connection}/{max_link_capacity}")
+                    # print(f"{duo_zones}: connection occupancy: "
+                    #       f"{total_drones_in_connection}/{max_link_capacity}")
 
     def get_blocked_zones(self) -> set[str]:
         blocked_zones: set[str] = set()
@@ -187,37 +187,57 @@ class Simulation:
                 is_running = True
         return is_running
 
-    # def run_simulation(self) -> None:
-    #     while self.is_simulation_running():
-    #         self.tick()
-
     def run_simulation(self) -> None:
-        print("\n" + "="*40)
-        print("STARTING THE SIMULATION IN TERMINAL MODE")
-        print("="*40)
+        """
+        Boucle d'exécution principale de la simulation.
+        Sortie standard strictement conforme aux spécifications VII.5.
+        """
+        tour = 1
 
         while self.is_simulation_running():
-            tour = 1
-            self.tick()
+            # 1. On récupère les mouvements calculés pour ce tour
+            moves = self.tick()
 
-            for drone in self.drones:
-                print(f"{drone.display_drone_status()}")
-
-            # # 4. On affiche l'occupation des hubs et connexions
-            # print("\n--- INFRASTRUCTURE ---")
-            self.display_status()
-
-            # # 5. PAUSE : Attend que tu appuies sur Entrée pour passer au tour suivant
-            input("\nAppuyez sur [ENTRÉE] pour passer au tour suivant...")
+            # 2. On affiche les mouvements séparés par un espace unique
+            # (S'il n'y a aucun mouvement ce tour-ci, on n'affiche rien)
+            if moves:
+                print(" ".join(moves))
 
             tour += 1
 
-            # Sécurité anti-boucle infinie (edge case : si un drone reste bloqué)
-            if tour > 100:
-                print("\n[ERREUR] Limite de 100 tours atteinte. Arrêt de sécurité.")
+            # Filet de sécurité anti-boucle infinie (ajusté pour la map Challenger)
+            if tour > 500:
+                # Écrit sur stderr pour ne pas polluer stdout si ça arrive
+                import sys
+                print("[ERREUR] Limite de 500 tours atteinte.", file=sys.stderr)
                 break
+    # def run_simulation(self) -> None:
+    #     print("\n" + "="*40)
+    #     print("STARTING THE SIMULATION IN TERMINAL MODE")
+    #     print("="*40)
 
-        if not self.is_simulation_running():
-            print("\n" + "="*40)
-            print(f"🏁 TOUS LES DRONES SONT ARRIVÉS EN {tour - 1} TOURS !")
-            print("="*40)
+    #     while self.is_simulation_running():
+    #         tour = 1
+    #         self.tick()
+
+    #         for drone in self.drones:
+    #             print(f"{drone.display_drone_status()}")
+
+    #         # # 4. On affiche l'occupation des hubs et connexions
+    #         # print("\n--- INFRASTRUCTURE ---")
+    #         self.display_status()
+
+    #         # # 5. PAUSE : Attend que tu appuies sur Entrée pour passer au tour suivant
+    #         input("\nAppuyez sur [ENTRÉE] pour passer au tour suivant...")
+
+    #         tour += 1
+
+    #         # Sécurité anti-boucle infinie (edge case : si un drone reste bloqué)
+    #         if tour > 100:
+    #             print("\n[ERREUR] Limite de 100 tours atteinte. Arrêt de sécurité.")
+    #             break
+
+    #     if not self.is_simulation_running():
+    #         print("\n" + "="*40)
+    #         print(f"🏁 TOUS LES DRONES SONT ARRIVÉS EN {tour - 1} TOURS !")
+    #         print("="*40)
