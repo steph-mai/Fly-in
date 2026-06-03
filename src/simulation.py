@@ -114,12 +114,18 @@ class Simulation:
 
     def tick(self) -> list[str]:
         self.connection_occupancy.clear()
+        for drone in self.drones:
+            if not drone.is_arrived and drone.cooldown > 0:
+                self.connection_occupancy[(drone.previous_zone, drone.current_zone)] += 1
+
         turn_moves: list[str] = []
 
         blocked_zones: set[str] = self.get_blocked_zones()
         blocked_connections: set[tuple[str, str]] = self.get_blocked_connections()
 
-        for drone in self.drones:
+        drones_to_moves = sorted(self.drones, key=lambda d: self.distances_map.get(d.current_zone, float('inf')))
+
+        for drone in drones_to_moves:
             if drone.is_arrived:
                 continue
 
@@ -188,29 +194,22 @@ class Simulation:
         return is_running
 
     def run_simulation(self) -> None:
-        """
-        Boucle d'exécution principale de la simulation.
-        Sortie standard strictement conforme aux spécifications VII.5.
-        """
+
         tour = 1
 
         while self.is_simulation_running():
-            # 1. On récupère les mouvements calculés pour ce tour
             moves = self.tick()
 
-            # 2. On affiche les mouvements séparés par un espace unique
-            # (S'il n'y a aucun mouvement ce tour-ci, on n'affiche rien)
             if moves:
                 print(" ".join(moves))
 
             tour += 1
 
-            # Filet de sécurité anti-boucle infinie (ajusté pour la map Challenger)
             if tour > 500:
-                # Écrit sur stderr pour ne pas polluer stdout si ça arrive
                 import sys
-                print("[ERREUR] Limite de 500 tours atteinte.", file=sys.stderr)
+                print("[ERREUR] 500 turns limit reached", file=sys.stderr)
                 break
+        print(f"Number of turns: {tour}")
     # def run_simulation(self) -> None:
     #     print("\n" + "="*40)
     #     print("STARTING THE SIMULATION IN TERMINAL MODE")

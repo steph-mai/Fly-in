@@ -85,14 +85,13 @@ class MapGraph:
         queue: list[str] = [end_zone_name]
 
         while queue:
-            current_zone = queue.pop()
+            current_zone = queue.pop(0)
             current_distance = distances_dict[current_zone]
 
             neighbors = self.get_neighbors(current_zone)
             for neighbor in neighbors:
                 if neighbor not in distances_dict:
-                    current_distance += 1
-                    distances_dict[neighbor] = current_distance
+                    distances_dict[neighbor] = current_distance + 1
                     queue.append(neighbor)
         return distances_dict
 
