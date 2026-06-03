@@ -3,10 +3,10 @@
 #                                                      :::      ::::::::    #
 #  parser.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/05/28 10:11:01 by stephanie       ###   ########.fr        #
+#  Updated: 2026/06/03 10:01:48 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -226,6 +226,14 @@ class MapParser:
                     raise ValueError(f"Line {line_num}: "
                                      f"Forbidden metadata key "
                                      f"'{key}'.")
+
+            if "color" in zone_dict:
+                clean_color = zone_dict["color"].strip().upper()
+                if clean_color == "DARKRED":
+                    clean_color = "DARK_RED"
+                if clean_color == "RAINBOW":
+                    clean_color = "LAVENDER"
+                zone_dict["color"] = clean_color
 
         zone_dict["line_num"] = line_num
 

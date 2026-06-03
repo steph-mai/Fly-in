@@ -36,6 +36,11 @@ class Simulation:
             self.drones.append(drone)
         self.hub_occupancy[self.start_zone_name] = self.total_drones
 
+        self.distances_map: dict[str, int] = (
+            self.map_graph.build_distances_map(self.end_zone_name))
+
+
+
     def display_status(self) -> None:  # vérifier aue tout est utile
         """Prints the current occupancy of the simulation."""
         # print(f"Total drones: {self.total_drones}\n")
@@ -107,57 +112,9 @@ class Simulation:
 
         return total_drones_in_flight < max_link_capacity
 
-    # def tick(self) -> None:
-    #     self.connection_occupancy.clear()
-
-    #     blocked_zones: set[str] = self.get_blocked_zones()
-    #     blocked_connections: set[tuple[str, str]] = (
-    #         self.get_blocked_connections())
-
-    #     for drone in self.drones:
-    #         if drone.is_arrived:
-    #             continue
-
-    #         if drone.cooldown >= 1:
-    #             drone.cooldown -= 1
-    #             continue
-
-    #         drone_path = self.map_graph.find_best_path(
-    #             drone.current_zone,
-    #             self.end_zone_name,
-    #             blocked_zones,
-    #             blocked_connections)
-
-    #         if not drone_path or len(drone_path) < 2:
-    #             continue
-
-    #         next_zone = drone_path[1]
-
-    #         self.hub_occupancy[next_zone] += 1
-    #         self.hub_occupancy[drone.current_zone] -= 1
-
-    #         previous_zone = drone.current_zone
-    #         drone.current_zone = next_zone
-
-    #         self.connection_occupancy[(previous_zone, drone.current_zone)] += 1
-
-    #         if drone.current_zone == self.end_zone_name:
-    #             drone.is_arrived = True
-
-    #         zone_obj = self.map_graph.zones.get(drone.current_zone)
-    #         if zone_obj.zone == "restricted":
-    #             drone.cooldown += 1
-
-    #         if not self._is_enough_place_in_zone(drone.current_zone):
-    #             blocked_zones.add(drone.current_zone)
-    #         if not self._is_enough_place_in_connection(
-    #             previous_zone, drone.current_zone
-    #         ):
-    #             blocked_connections.add((previous_zone, drone.current_zone))
-    #             blocked_connections.add((drone.current_zone, previous_zone))
-
-    def tick(self) -> None:
+    def tick(self) -> list[str]:
         self.connection_occupancy.clear()
+        turn_moves: list[str] = []
 
         blocked_zones: set[str] = self.get_blocked_zones()
         blocked_connections: set[tuple[str, str]] = self.get_blocked_connections()
@@ -168,45 +125,60 @@ class Simulation:
 
             if drone.cooldown >= 1:
                 drone.cooldown -= 1
+                connection_name = getattr(
+                    drone, "current_connection", f"{drone.previous_zone}_{drone.current_zone}")
+                turn_moves.append(f"D{drone.id}-{connection_name}")
                 continue
 
-            drone_path = self.map_graph.find_best_path(
-                drone.current_zone,
-                self.end_zone_name,
-                blocked_zones,
-                blocked_connections)
+            best_next_zone = None
+            min_dist = float('inf')
 
-            if not drone_path or len(drone_path) < 2:
+            for neighbor in self.map_graph.get_neighbors(drone.current_zone):
+                if neighbor in blocked_zones:
+                    continue
+                if (drone.current_zone, neighbor) in blocked_connections:
+                    continue
+
+                dist = self.distances_map.get(neighbor, float('inf'))
+
+                if dist < min_dist:
+                    min_dist = dist
+                    best_next_zone = neighbor
+
+            if not best_next_zone:
                 continue
 
-            next_zone = drone_path[1]
-
-            self.hub_occupancy[next_zone] += 1
-            self.hub_occupancy[drone.current_zone] -= 1
+            next_zone = best_next_zone
 
             previous_zone = drone.current_zone
+            drone.previous_zone = previous_zone
+            drone.current_connection = f"{previous_zone}_{next_zone}"
+
+            self.hub_occupancy[next_zone] += 1
+            self.hub_occupancy[previous_zone] -= 1
             drone.current_zone = next_zone
 
+            turn_moves.append(f"D{drone.id}-{next_zone}")
 
             if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
                 blocked_zones.remove(previous_zone)
 
-            self.connection_occupancy[(previous_zone, drone.current_zone)] += 1
+            self.connection_occupancy[(previous_zone, next_zone)] += 1
 
-            if drone.current_zone == self.end_zone_name:
+            if next_zone == self.end_zone_name:
                 drone.is_arrived = True
 
-            zone_obj = self.map_graph.zones.get(drone.current_zone)
+            zone_obj = self.map_graph.zones.get(next_zone)
             if zone_obj and zone_obj.zone == "restricted":
                 drone.cooldown += 1
 
-            # Si la zone d'arrivée est devenue pleine, on la bloque pour les suivants
-            if not self._is_enough_place_in_zone(drone.current_zone):
-                blocked_zones.add(drone.current_zone)
+            if not self._is_enough_place_in_zone(next_zone):
+                blocked_zones.add(next_zone)
+            if not self._is_enough_place_in_connection(previous_zone, next_zone):
+                blocked_connections.add((previous_zone, next_zone))
+                blocked_connections.add((next_zone, previous_zone))
 
-            if not self._is_enough_place_in_connection(previous_zone, drone.current_zone):
-                blocked_connections.add((previous_zone, drone.current_zone))
-                blocked_connections.add((drone.current_zone, previous_zone))
+        return turn_moves
 
     def is_simulation_running(self) -> bool:
         is_running = False
@@ -220,45 +192,32 @@ class Simulation:
     #         self.tick()
 
     def run_simulation(self) -> None:
-            """Boucle de simulation pour le mode terminal avec affichage pas-à-pas."""
-            print("\n" + "="*40)
-            print("DÉMARRAGE DE LA SIMULATION EN MODE TERMINAL")
-            print("="*40)
+        print("\n" + "="*40)
+        print("STARTING THE SIMULATION IN TERMINAL MODE")
+        print("="*40)
 
+        while self.is_simulation_running():
             tour = 1
+            self.tick()
 
-            # 1. État initial de la carte avant le premier mouvement
-            print("\n--- ÉTAT INITIAL ---")
+            for drone in self.drones:
+                print(f"{drone.display_drone_status()}")
+
+            # # 4. On affiche l'occupation des hubs et connexions
+            # print("\n--- INFRASTRUCTURE ---")
             self.display_status()
 
-            while self.is_simulation_running():
-                print(f"\n\n{'='*15} TICK {tour} {'='*15}")
+            # # 5. PAUSE : Attend que tu appuies sur Entrée pour passer au tour suivant
+            input("\nAppuyez sur [ENTRÉE] pour passer au tour suivant...")
 
-                # 2. On fait avancer la simulation d'un pas
-                self.tick()
+            tour += 1
 
-                # 3. On affiche l'état des drones (si ta classe Drone a un __str__)
-                print("\n--- ÉTAT DES DRONES ---")
-                for drone in self.drones:
-                    # Si tu n'as pas de méthode __str__ dans drone.py,
-                    # tu peux mettre : print(f"Drone {drone.id} sur {drone.current_zone} (Arrivé: {drone.is_arrived})")
-                    print(drone)
+            # Sécurité anti-boucle infinie (edge case : si un drone reste bloqué)
+            if tour > 100:
+                print("\n[ERREUR] Limite de 100 tours atteinte. Arrêt de sécurité.")
+                break
 
-                # 4. On affiche l'occupation des hubs et connexions
-                print("\n--- INFRASTRUCTURE ---")
-                self.display_status()
-
-                # 5. PAUSE : Attend que tu appuies sur Entrée pour passer au tour suivant
-                input("\nAppuyez sur [ENTRÉE] pour passer au tour suivant...")
-
-                tour += 1
-
-                # Sécurité anti-boucle infinie (edge case : si un drone reste bloqué)
-                if tour > 100:
-                    print("\n[ERREUR] Limite de 100 tours atteinte. Arrêt de sécurité.")
-                    break
-
-            if not self.is_simulation_running():
-                print("\n" + "="*40)
-                print(f"🏁 TOUS LES DRONES SONT ARRIVÉS EN {tour - 1} TOURS !")
-                print("="*40)
+        if not self.is_simulation_running():
+            print("\n" + "="*40)
+            print(f"🏁 TOUS LES DRONES SONT ARRIVÉS EN {tour - 1} TOURS !")
+            print("="*40)

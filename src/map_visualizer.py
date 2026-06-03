@@ -174,7 +174,8 @@ class MapVisualizer:
                 if icon:
                     icon.center_x = screen_x
                     icon.center_y = screen_y
-                    scale_multiplier = 1.1 if icon.texture == tex_palm else 1.4
+                    scale_multiplier = (
+                        1.1 if icon.texture in [tex_palm, tex_rock] else 1.4)
                     icon.scale = (
                         self.base_radius * scale_multiplier) / icon.width
                     self.icon_list.append(icon)
@@ -247,23 +248,26 @@ class MapVisualizer:
             screen_x, screen_y = self.get_screen_coords(zone_obj.x, zone_obj.y)
 
             if zone_obj.is_start:
-                color = arcade.color.LAVENDER_PINK
                 radius = self.base_radius
             elif zone_obj.is_end:
-                color = arcade.color.GREEN_YELLOW
                 radius = self.base_radius
             elif zone_obj.zone == "blocked" or "dead" in zone_name:
-                color = arcade.color.LIGHT_SLATE_GRAY
                 radius = int(self.base_radius * 0.7)
             elif zone_obj.zone == "restricted":
-                color = arcade.color.CADET_GREY
                 radius = int(self.base_radius * 0.8)
             elif zone_obj.zone == "priority":
-                color = arcade.color.AQUAMARINE
                 radius = int(self.base_radius * 0.8)
             else:
-                color = arcade.color.WHEAT
                 radius = int(self.base_radius * 0.8)
+
+            zone_color_name = getattr(zone_obj, "color", None)
+
+            color = getattr(
+                arcade.color, str(zone_color_name), None
+                ) if zone_color_name else None
+
+            if color is None:
+                color = arcade.color.WHITE
 
             arcade.draw_circle_filled(screen_x, screen_y, radius, color)
             arcade.draw_circle_outline(

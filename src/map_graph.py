@@ -78,6 +78,24 @@ class MapGraph:
         infos_zone = self.zones.get(zone_name)
         return infos_zone
 
+    def build_distances_map(self, end_zone_name: str) -> dict[str, int]:
+        distances_dict = {}
+        distances_dict[end_zone_name] = 0
+
+        queue: list[str] = [end_zone_name]
+
+        while queue:
+            current_zone = queue.pop()
+            current_distance = distances_dict[current_zone]
+
+            neighbors = self.get_neighbors(current_zone)
+            for neighbor in neighbors:
+                if neighbor not in distances_dict:
+                    current_distance += 1
+                    distances_dict[neighbor] = current_distance
+                    queue.append(neighbor)
+        return distances_dict
+
     def find_best_path(
             self,
             start_name: str,
