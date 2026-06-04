@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/04 11:53:52 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/04 16:11:57 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -223,8 +223,14 @@ class MapParser:
         zone_dict['max_drones'] = 1
 
         if raw_metadata:
+            if '[' in raw_metadata or ']' in raw_metadata:
+                raise ValueError(
+                    f"Invalid metadata syntax '[{raw_metadata}]': multiple "
+                    f"metadata blocks or malformed brackets"
+                )
             raw__metadata_list = raw_metadata.split()
             authorized_metadata = ["color", "max_drones", "zone"]
+            seen_metadata = set()
 
             for supposed_metadata in raw__metadata_list:
                 match_metadata = self.metadata_pattern.fullmatch(
@@ -234,12 +240,17 @@ class MapParser:
                                      F"syntax '{supposed_metadata}' "
                                      f"Usage: 'key=value'")
                 key, value = match_metadata.groups()
+                if key in seen_metadata:
+                    raise ValueError(
+                        f"Duplicate metadata. {supposed_metadata} is invalid."
+                    )
                 if key in authorized_metadata:
                     zone_dict[key] = value
                 else:
                     raise ValueError(f"Line {line_num}: "
                                      f"Forbidden metadata key "
                                      f"'{key}'.")
+                seen_metadata.add(key)
 
             if "color" in zone_dict:
                 clean_color = zone_dict["color"].strip().upper()

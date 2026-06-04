@@ -68,13 +68,17 @@ class MapController(arcade.View):
         self.time_since_last_tick: float = 0.0
         self.tick_rate: float = 1.5
 
+        center_x = self.window.width / 2
+        bottom_margin = 30
         self.score_text = arcade.Text(
-            text="Turn: 1 | IN PROGRESS...",
-            x=self.window.width // 2 - 100,  # 'x' au lieu de 'start_x'
-            y=20,                            # 'y' au lieu de 'start_y'
+            text="",
+            x=center_x,
+            y=bottom_margin,
             color=arcade.color.WHITE,
             font_size=16,
-            bold=True
+            bold=True,
+            anchor_x="center",
+            anchor_y="center"
         )
 
     def _setup_ui(self) -> None:
@@ -112,21 +116,29 @@ class MapController(arcade.View):
             self.window.show_view(MenuView())
 
     def on_draw(self) -> None:
-        """Render the map graphics and the UI overlay at 60 FPS."""
         self.clear()
         self.visualizer.draw_everything()
 
-        status_msg = "IN PROGRESS..." if self.sim.is_simulation_running() else "Simulation ended"
+        is_math_done = not self.sim.is_simulation_running()
+        is_anim_done = self.time_since_last_tick >= self.tick_rate
+        is_visually_ended = is_math_done and is_anim_done
 
         nb_turns = self.sim.stats.total_turns
 
-        # On actualise les données de l'objet
-        self.score_text.text = f"Tour : {nb_turns} | {status_msg}"
-        self.score_text.color = arcade.color.WHITE if self.sim.is_simulation_running() else arcade.color.GOLD
+        if is_visually_ended:
+            status_msg = "SIMULATION ENDED"
+            self.score_text.color = arcade.color.UCLA_BLUE
+        elif nb_turns == 0:
+            status_msg = "START OF THE SIMULATION"
+            self.score_text.color = arcade.color.WHITE
+        else:
+            status_msg = "SIMULATION RUNNING..."
+            self.score_text.color = arcade.color.WHITE
 
-        # On le dessine
+
+        self.score_text.text = f"TURN : {nb_turns} | {status_msg}"
+
         self.score_text.draw()
-
         self.manager.draw()
 
     def on_update(self, delta_time: float) -> None:
@@ -134,6 +146,8 @@ class MapController(arcade.View):
         Gère l'écoulement du temps et l'avancement de la simulation.
         Appelé environ 60 fois par seconde par Arcade.
         """
+        # On plafonne le temps pour absorber le lag du chargement initial
+        delta_time = min(delta_time, 0.1)
         self.time_since_last_tick += delta_time
 
         # Quand le chronomètre atteint la limite (ex: 0.6s)

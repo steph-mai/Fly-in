@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/01 15:33:17 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/04 16:46:38 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -125,6 +125,10 @@ class MapConfigModel(BaseModel):
                                      f"of drones ({self.nb_drones}).")
                 start_zone_lines.append(zone.line_num)
             if zone.is_end is True:
+                if zone.zone == 'blocked':
+                    raise ValueError(
+                        f"Invalid card: the end_zone is a blocked_zone."
+                    )
                 end_zone_lines.append(zone.line_num)
 
             coord = (zone.x, zone.y)

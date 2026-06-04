@@ -49,6 +49,11 @@ class Simulation:
 
         self.distances_map: dict[str, int] = (
             self.map_graph.build_distances_map(self.end_zone_name))
+        start_distance = self.distances_map.get(self.start_zone_name, float('inf'))
+        if start_distance == float('inf'):
+            raise ValueError(
+                "This map cannot be solved: the start_zone, "
+                "end_zone, or a mandatory passage zone may be blocked.")
 
         self.stats = SimulationStats()
         for drone in self.drones:
@@ -95,16 +100,19 @@ class Simulation:
             if not drone.is_arrived and drone.cooldown > 0:
                 route = getattr(drone, "incoming_route", (drone.previous_zone, drone.current_zone))
                 self.connection_occupancy[route] = self.connection_occupancy.get(route, 0) + 1
-        turn_moves: list[str] = []
 
+        turn_moves: list[str] = []
         blocked_zones: set[str] = self.get_blocked_zones()
         blocked_connections: set[tuple[str, str]] = self.get_blocked_connections()
+        moves_this_turn = 0
 
         drones_to_moves = sorted(
             self.drones,
             key=lambda d: self.distances_map.get(d.current_zone, float('inf'))
         )
-        moves_this_turn = 0
+
+        # 1. Séparation des drones en attente de mouvement
+        drones_waiting = []
 
         for drone in drones_to_moves:
             if drone.is_arrived:
@@ -123,69 +131,81 @@ class Simulation:
                 self.stats.total_path_cost += 1
                 continue
 
-            best_next_zone = None
-            min_dist = float('inf')
+            drones_waiting.append(drone)
 
-            current_dist = self.distances_map.get(drone.current_zone, float('inf'))
+        # 2. Le Multi-pass (Réaction en chaîne)
+        has_freed_space = True
+        while has_freed_space:
+            has_freed_space = False
 
-            for neighbor in self.map_graph.get_neighbors(drone.current_zone):
-                if neighbor in blocked_zones:
-                    continue
-                if (drone.current_zone, neighbor) in blocked_connections:
-                    continue
+            for drone in drones_waiting[:]:
+                best_next_zone = None
+                min_dist = float('inf')
+                current_dist = self.distances_map.get(drone.current_zone, float('inf'))
 
-                dist = self.distances_map.get(neighbor, float('inf'))
+                for neighbor in self.map_graph.get_neighbors(drone.current_zone):
+                    if neighbor in blocked_zones:
+                        continue
+                    if (drone.current_zone, neighbor) in blocked_connections:
+                        continue
+                    neighbor_obj = self.map_graph.zones.get(neighbor)
+                    if neighbor_obj.zone == "blocked":
+                        continue
 
-                # 2. LE CORRECTIF : On s'assure que le mouvement nous rapproche (dist < current_dist)
-                if dist < min_dist and dist < current_dist:
-                    min_dist = dist
-                    best_next_zone = neighbor
+                    dist = self.distances_map.get(neighbor, float('inf'))
+                    if dist < min_dist and dist < current_dist:
+                        min_dist = dist
+                        best_next_zone = neighbor
 
-            if not best_next_zone:
-                drone.previous_zone = drone.current_zone
-                continue
+                if not best_next_zone:
+                    continue  # Il reste dans drones_waiting pour la passe suivante
 
-            next_zone = best_next_zone
+                next_zone = best_next_zone
+                previous_zone = drone.current_zone
+                drone.previous_zone = previous_zone
+                drone.current_connection = f"{previous_zone}_{next_zone}"
 
-            previous_zone = drone.current_zone
-            drone.previous_zone = previous_zone
-            drone.current_connection = f"{previous_zone}_{next_zone}"
+                self.hub_occupancy[next_zone] = self.hub_occupancy.get(next_zone, 0) + 1
+                self.hub_occupancy[previous_zone] = self.hub_occupancy.get(previous_zone, 0) - 1
+                drone.current_zone = next_zone
+                drone.incoming_route = (previous_zone, next_zone)
 
-            self.hub_occupancy[next_zone] = self.hub_occupancy.get(next_zone, 0) + 1
-            self.hub_occupancy[previous_zone] = self.hub_occupancy.get(previous_zone, 0) - 1
-            drone.current_zone = next_zone
-            drone.incoming_route = (previous_zone, next_zone)
+                turn_moves.append(f"D{drone.id}-{next_zone}")
+                moves_this_turn += 1
+                self.stats.total_path_cost += 1  # Typo corrigée
 
-            turn_moves.append(f"D{drone.id}-{next_zone}")
-            moves_this_turn += 1
-            self.stats.total_path_cost
+                if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
+                    blocked_zones.remove(previous_zone)
 
-            if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
-                blocked_zones.remove(previous_zone)
+                self.connection_occupancy[(previous_zone, next_zone)] = (
+                    self.connection_occupancy.get((previous_zone, next_zone), 0) + 1
+                )
 
-            self.connection_occupancy[(previous_zone, next_zone)] = (
-                self.connection_occupancy.get((previous_zone, next_zone), 0) + 1
-            )
+                if next_zone == self.end_zone_name:
+                    drone.is_arrived = True
 
-            if next_zone == self.end_zone_name:
-                drone.is_arrived = True
+                zone_obj = self.map_graph.zones.get(next_zone)
+                if zone_obj and zone_obj.zone == "restricted":
+                    drone.cooldown += 1
 
-            zone_obj = self.map_graph.zones.get(next_zone)
-            if zone_obj and zone_obj.zone == "restricted":
-                drone.cooldown += 1
+                if not self._is_enough_place_in_zone(next_zone):
+                    blocked_zones.add(next_zone)
+                if not self._is_enough_place_in_connection(previous_zone, next_zone):
+                    blocked_connections.add((previous_zone, next_zone))
+                    blocked_connections.add((next_zone, previous_zone))
 
-            if not self._is_enough_place_in_zone(next_zone):
-                blocked_zones.add(next_zone)
-            if not self._is_enough_place_in_connection(previous_zone, next_zone):
-                blocked_connections.add((previous_zone, next_zone))
-                blocked_connections.add((next_zone, previous_zone))
+                # Le drone a bougé : on le retire et on relance une passe
+                drones_waiting.remove(drone)
+                has_freed_space = True
 
-        def _get_drone_id(move_str: str) -> int:
-            return int(move_str.split('-')[0][1:])
+        # 3. Figer les drones restés bloqués après toutes les passes
+        for drone in drones_waiting:
+            drone.previous_zone = drone.current_zone
 
-        turn_moves.sort(key=_get_drone_id)
+        # 4. Finalisation des statistiques du tour (Garantit l'absence d'erreurs IndexError)
         self.stats.moves_per_turn.append(moves_this_turn)
         self.stats.total_turns += 1
+
         return turn_moves
 
     def is_simulation_running(self) -> bool:
@@ -203,5 +223,4 @@ class Simulation:
                 print("[ERREUR] 500 turns limit reached", file=sys.stderr)
                 break
 
-        # Affichage du score masqué pour la moulinette
-        print(f"Number of turns: {tour - 1}", file=sys.stderr)
+

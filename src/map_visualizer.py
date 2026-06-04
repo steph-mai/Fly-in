@@ -74,7 +74,7 @@ class MapVisualizer:
         map_height_units = max(1, max_y - min_y)
 
         padding_x = 100
-        padding_y = 100
+        padding_y = 130
 
         self.scale_x = (width - (padding_x * 2)) / map_width_units
         self.scale_y = (height - (padding_y * 2)) / map_height_units
@@ -201,7 +201,7 @@ class MapVisualizer:
                 ship.center_x = screen_x
                 ship.center_y = screen_y
 
-                target_width = max(30, self.base_radius * 3)
+                target_width = max(30, self.base_radius * 4)
                 ship.scale = target_width / ship.width
 
                 ship.color = distinct_colors[drone.id % len(distinct_colors)]
@@ -335,16 +335,6 @@ class MapVisualizer:
             ship.center_x = current_x + offset_x
             ship.center_y = current_y + offset_y
 
-            # # 4. ROTATION DU BATEAU (Edge case : on ne tourne pas s'il est à l'arrêt)
-            # if start_x != end_x or start_y != end_y:
-            #     # atan2 calcule l'angle en radians, on le convertit en degrés pour Arcade
-            #     angle_rad = math.atan2(end_y - start_y, end_x - start_x)
-            #     base_angle = math.degrees(angle_rad)
-            #     # Note: selon ton image ship.png, il faudra peut-être ajouter -90 à l'angle
-            #     # si l'image pointe vers le haut par défaut au lieu de la droite.
-            #     ship.angle = base_angle - 90
-
-            # --- CORRECTION 4 : La transparence intelligente (Le Final) ---
             if drone.is_arrived:
                 if drone.previous_zone == drone.current_zone:
                     # Bateau déjà arrivé aux tours précédents = garé et invisible

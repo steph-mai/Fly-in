@@ -78,84 +78,112 @@ class MapGraph:
         infos_zone = self.zones.get(zone_name)
         return infos_zone
 
-    def build_distances_map(self, end_zone_name: str) -> dict[str, int]:
-        distances_dict = {}
-        distances_dict[end_zone_name] = 0
+    def build_distances_map(self, end_zone_name: str) -> dict[str, float]:
+        # On utilise des float car les distances peuvent être des demi-tours (0.5)
+        distances_dict: dict[str, float] = {}
 
-        queue: list[str] = [end_zone_name]
+        # La file de priorité stocke des tuples : (distance_accumulée, nom_de_la_zone)
+        # heapq va automatiquement trier cette liste par la distance la plus petite
+        queue: list[tuple[float, str]] = [(0.0, end_zone_name)]
 
         while queue:
-            current_zone = queue.pop(0)
-            current_distance = distances_dict[current_zone]
+            # On extrait toujours la zone la plus "proche" mathématiquement
+            current_distance, current_zone = heapq.heappop(queue)
+
+            # Si on a déjà validé cette zone avec un chemin plus court, on l'ignore
+            if current_zone in distances_dict:
+                continue
+
+            # On verrouille la distance finale pour cette zone
+            distances_dict[current_zone] = current_distance
+
+            # --- CORRECTION DU SENS DU COÛT ---
+            # Quel sera le coût pour un bateau de QUITTER un voisin pour ENTRER ici ?
+            current_zone_obj = self.zones.get(current_zone)
+            if current_zone_obj.zone == 'priority':
+                step_cost = 0.5
+            elif current_zone_obj.zone == 'restricted':
+                step_cost = 2.0
+            else:
+                step_cost = 1.0 # Les zones 'normal' (et le hub d'arrivée) coûtent 1
 
             neighbors = self.get_neighbors(current_zone)
             for neighbor in neighbors:
-                if neighbor not in distances_dict:
-                    distances_dict[neighbor] = current_distance + 1
-                    queue.append(neighbor)
-        return distances_dict
+                neighbor_obj = self.zones.get(neighbor)
 
-    def find_best_path(
-            self,
-            start_name: str,
-            end_name: str,
-            blocked_zones: set[str],
-            blocked_connections: set[tuple[str, str]]
-    ) -> list[str]:
-        """
-        Find the best path using a Dijkstra algorithm
-
-        Args:
-            start_name(str): The name of the start zone.
-            end_name(str): The name of the end zone.
-            blocked_zones(set[str]): includes the names of the inaccessible
-            zones.
-
-        Return:
-            list[str]; The best path from start_zone to end_zone.
-        """
-        if not blocked_zones:
-            blocked_zones: set = set()
-        if not blocked_connections:
-            blocked_connections: set = set()
-
-        if start_name == end_name:
-            return [start_name]
-
-        if end_name in blocked_zones:
-            return []
-
-        priority_queue: list[tuple[int, list[str]]] = [(0, [start_name])]
-        best_times: dict[str, int] = {start_name: 0}
-
-        while priority_queue:
-            current_cost, current_path = heapq.heappop(priority_queue)
-            current_zone = current_path[-1]
-
-            if current_zone == end_name:
-                return current_path
-
-            if current_cost > best_times.get(current_zone, float('inf')):
-                continue
-
-            dico_neighbors = self.graph_adj[current_zone]
-            for neighbor, link_capacity in dico_neighbors.items():
-                if (
-                    link_capacity == 0 or
-                    neighbor in blocked_zones or
-                    (current_zone, neighbor) in blocked_connections
-                ):
+                # On ne peut pas traverser une zone bloquée
+                if neighbor_obj.zone == 'blocked':
                     continue
 
-                neighbor_obj = self.zones[neighbor]
-                if neighbor_obj.zone == "restricted":
-                    new_cost = current_cost + 2
-                else:
-                    new_cost = current_cost + 1
+                # Si le voisin n'a pas encore été verrouillé, on propose ce nouveau chemin
+                if neighbor not in distances_dict:
+                    new_distance = current_distance + step_cost
+                    # On pousse la proposition dans la file. heapq fera le tri !
+                    heapq.heappush(queue, (new_distance, neighbor))
 
-                if new_cost < best_times.get(neighbor, float('inf')):
-                    best_times[neighbor] = new_cost
-                    new_path = list(current_path)
-                    new_path.append(neighbor)
-                    heapq.heappush(priority_queue, (new_cost, new_path))
-        return []
+        return distances_dict
+
+    # def find_best_path(
+    #         self,
+    #         start_name: str,
+    #         end_name: str,
+    #         blocked_zones: set[str],
+    #         blocked_connections: set[tuple[str, str]]
+    # ) -> list[str]:
+    #     """
+    #     Find the best path using a Dijkstra algorithm
+
+    #     Args:
+    #         start_name(str): The name of the start zone.
+    #         end_name(str): The name of the end zone.
+    #         blocked_zones(set[str]): includes the names of the inaccessible
+    #         zones.
+
+    #     Return:
+    #         list[str]; The best path from start_zone to end_zone.
+    #     """
+    #     if not blocked_zones:
+    #         blocked_zones: set = set()
+    #     if not blocked_connections:
+    #         blocked_connections: set = set()
+
+    #     if start_name == end_name:
+    #         return [start_name]
+
+    #     if end_name in blocked_zones:
+    #         return []
+
+    #     priority_queue: list[tuple[int, list[str]]] = [(0, [start_name])]
+    #     best_times: dict[str, int] = {start_name: 0}
+
+    #     while priority_queue:
+    #         current_cost, current_path = heapq.heappop(priority_queue)
+    #         current_zone = current_path[-1]
+
+    #         if current_zone == end_name:
+    #             return current_path
+
+    #         if current_cost > best_times.get(current_zone, float('inf')):
+    #             continue
+
+    #         dico_neighbors = self.graph_adj[current_zone]
+    #         for neighbor, link_capacity in dico_neighbors.items():
+    #             if (
+    #                 link_capacity == 0 or
+    #                 neighbor in blocked_zones or
+    #                 (current_zone, neighbor) in blocked_connections
+    #             ):
+    #                 continue
+
+    #             neighbor_obj = self.zones[neighbor]
+    #             if neighbor_obj.zone == "restricted":
+    #                 new_cost = current_cost + 2
+    #             else:
+    #                 new_cost = current_cost + 1
+
+    #             if new_cost < best_times.get(neighbor, float('inf')):
+    #                 best_times[neighbor] = new_cost
+    #                 new_path = list(current_path)
+    #                 new_path.append(neighbor)
+    #                 heapq.heappush(priority_queue, (new_cost, new_path))
+    #     return []

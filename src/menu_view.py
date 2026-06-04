@@ -11,7 +11,7 @@ import arcade.gui
 from src.map_controller import MapController
 from src.simulation_factory import SimulationFactory  # NOUVEL IMPORT
 from typing import Optional, Any, cast
-
+import sys
 
 class MenuView(arcade.View):
     """
@@ -200,7 +200,9 @@ class MenuView(arcade.View):
         # Si l'usine a rencontré une erreur, on l'affiche et on reste sur le menu
         if error_msg:
             print(error_msg)
-            return
+            if arcade.get_window():
+                arcade.close_window()
+            sys.exit(1)
 
         # Si la simulation est valide, on passe à l'affichage
         if sim:
