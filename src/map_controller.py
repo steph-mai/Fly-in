@@ -9,6 +9,7 @@ import arcade
 import arcade.gui
 from src.simulation import Simulation
 from src.map_visualizer import MapVisualizer
+import math
 
 
 class MapController(arcade.View):
@@ -29,7 +30,6 @@ class MapController(arcade.View):
 
         # 1. On reçoit la simulation déjà chargée et validée !
         self.sim = sim
-        self.sim.display_status()
 
         # 2. Le reste de ta logique de calcul de taille d'écran ne change pas
         x_coords = [zone.x for zone in self.sim.map_graph.zones.values()]
@@ -64,6 +64,19 @@ class MapController(arcade.View):
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self._setup_ui()
+
+        self.time_since_last_tick: float = 0.0
+        self.tick_rate: float = 1.5
+        self.current_turn: int = 1
+
+        self.score_text = arcade.Text(
+            text="Turn: 1 | IN PROGRESS...",
+            x=self.window.width // 2 - 100,  # 'x' au lieu de 'start_x'
+            y=20,                            # 'y' au lieu de 'start_y'
+            color=arcade.color.WHITE,
+            font_size=16,
+            bold=True
+        )
 
     def _setup_ui(self) -> None:
         """Create and anchor the UI elements, including the return button."""
@@ -103,4 +116,50 @@ class MapController(arcade.View):
         """Render the map graphics and the UI overlay at 60 FPS."""
         self.clear()
         self.visualizer.draw_everything()
+
+        status_msg = "IN PROGRESS..." if self.sim.is_simulation_running() else "Simulation ended"
+
+        # On actualise les données de l'objet
+        self.score_text.text = f"Tour : {self.current_turn} | {status_msg}"
+        self.score_text.color = arcade.color.WHITE if self.sim.is_simulation_running() else arcade.color.GOLD
+
+        # On le dessine
+        self.score_text.draw()
+
         self.manager.draw()
+
+    def on_update(self, delta_time: float) -> None:
+        """
+        Gère l'écoulement du temps et l'avancement de la simulation.
+        Appelé environ 60 fois par seconde par Arcade.
+        """
+        self.time_since_last_tick += delta_time
+
+        # Quand le chronomètre atteint la limite (ex: 0.6s)
+        if self.time_since_last_tick >= self.tick_rate:
+
+            # S'il reste des bateaux en jeu
+            if self.sim.is_simulation_running():
+
+                # --- 1. RÉCUPÉRATION DES MOUVEMENTS ---
+                # On stocke ce que le moteur mathématique vient de calculer
+                moves = self.sim.tick()
+
+                # --- 2. AFFICHAGE SYNCHRONISÉ DANS LE TERMINAL ---
+                # S'il y a eu au moins un mouvement ce tour-ci, on l'affiche
+                if moves:
+                    # Affichage au format strict demandé : "D1-roof1 D2-corridorA"
+                    print(" ".join(moves))
+
+                self.current_turn += 1
+                self.time_since_last_tick -= self.tick_rate
+            else:
+                # La simulation est finie, on fige la dernière image
+                self.time_since_last_tick = self.tick_rate
+                self.visualizer.update_ships_animation(1.0)
+                return
+
+        # 3. Calcul de l'interpolation (Lerp) pour l'animation à l'écran
+        progress = self.time_since_last_tick / self.tick_rate
+        progress = min(1.0, progress)
+        self.visualizer.update_ships_animation(progress)
