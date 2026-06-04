@@ -9,6 +9,7 @@ from pathlib import Path
 import arcade
 import arcade.gui
 from src.map_controller import MapController
+from src.simulation_factory import SimulationFactory  # NOUVEL IMPORT
 from typing import Optional, Any, cast
 
 
@@ -172,7 +173,7 @@ class MenuView(arcade.View):
         }
 
         back_button = arcade.gui.UIFlatButton(
-            text="<- Retour", width=150, height=45, style=back_style
+            text="<- Return", width=150, height=45, style=back_style
         )
 
         @back_button.event("on_click")
@@ -193,9 +194,20 @@ class MenuView(arcade.View):
         Args:
             map_path (Path): The explicit path to the selected map file.
         """
-        self.manager.disable()
-        simulation_view = MapController(map_file_path=map_path)
-        self.window.show_view(simulation_view)
+        # On demande à la Factory de fabriquer l'instance de simulation
+        sim, error_msg = SimulationFactory.build_from_file(map_path)
+
+        # Si l'usine a rencontré une erreur, on l'affiche et on reste sur le menu
+        if error_msg:
+            print(error_msg)
+            return
+
+        # Si la simulation est valide, on passe à l'affichage
+        if sim:
+            self.manager.disable()
+            simulation_view = MapController(sim=sim)
+            if self.window:
+                self.window.show_view(simulation_view)
 
     def on_draw(self) -> None:
         """Render the background sprite, the cinematic title, and all UI

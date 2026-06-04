@@ -6,45 +6,42 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/01 14:38:04 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/04 13:26:28 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
 import arcade
 import sys
+import traceback
 from src.menu_view import MenuView
-from pydantic import ValidationError
 
 
 def main() -> None:
+    print("--- STARTING THE PROGRAM ---")
+    print("Please select a card in the Arcade window...")
+
     try:
-        print("Launching graphical map viewer...")
         window = arcade.Window(1280, 720, "Fly-in Simulation")
+
         start_view = MenuView()
         window.show_view(start_view)
 
-        # 3. On lance la boucle de jeu
         arcade.run()
 
-    except (FileNotFoundError, IsADirectoryError) as e:
-        print(f"\033[91m[FILE ERROR]\033[0m {e}")
-        sys.exit(1)
-    except PermissionError as e:
-        print(f"\033[91m[PERMISSION ERROR]\033[0m {e}")
-        sys.exit(1)
-    except ValidationError as e:
-        error = e.errors()[0]
-        raw_message = error["msg"]
-        clean_message = raw_message.replace("Value error,", "")
-        print(f"\033[91m[VALUE ERROR]\033[0m {clean_message}")
-        sys.exit(1)
-    except ValueError as e:
-        print(f"\033[91m[VALUE ERROR]\033[0m {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\033[91m[ERROR]\033[0m {e}")
-        sys.exit(1)
+        print("\n--- PROGRAM CLOSING ---")
 
+    except KeyboardInterrupt:
+        print("\n\033[93m[INFO] User interrupt (Ctrl+C). Shutdown in progress...\033[0m", file=sys.stderr)
+
+        if arcade.get_window():
+            arcade.close_window()
+        # Code d'erreur POSIX standard pour SIGINT (128 + 2)
+        sys.exit(130)
+
+    except Exception as e:
+        print(f"\033[91m[FATAL ERROR]\033[0m {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

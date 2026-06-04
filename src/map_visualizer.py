@@ -8,6 +8,7 @@ for the simulation map.
 import arcade
 from src.simulation import Simulation
 from typing import Optional
+import math
 
 
 class MapVisualizer:
@@ -174,7 +175,8 @@ class MapVisualizer:
                 if icon:
                     icon.center_x = screen_x
                     icon.center_y = screen_y
-                    scale_multiplier = 1.1 if icon.texture == tex_palm else 1.4
+                    scale_multiplier = (
+                        1.1 if icon.texture in [tex_palm, tex_rock] else 1.4)
                     icon.scale = (
                         self.base_radius * scale_multiplier) / icon.width
                     self.icon_list.append(icon)
@@ -184,17 +186,32 @@ class MapVisualizer:
 
         try:
             tex_ship = arcade.load_texture("assets/ship.png")
-            for zone_name, zone_obj in self.sim.map_graph.zones.items():
-                if zone_obj.is_start:
-                    screen_x, screen_y = self.get_screen_coords(
-                        zone_obj.x, zone_obj.y)
-                    ship = arcade.Sprite(tex_ship)
-                    ship.center_x = screen_x
-                    ship.center_y = screen_y
-                    target_width = max(55, self.base_radius * 6)
-                    ship.scale = target_width / ship.width
-                    self.ship_list.append(ship)
-                    break
+
+            # On boucle sur la flotte réelle, pas sur les îles !
+            for drone in self.sim.drones:
+                ship = arcade.Sprite(tex_ship)
+
+                distinct_colors = [
+                    arcade.color.BLANCHED_ALMOND, arcade.color.BRILLIANT_LAVENDER, arcade.color.FLAVESCENT,
+                    arcade.color.GLITTER, arcade.color.GRANNY_SMITH_APPLE, arcade.color.LIGHT_SALMON
+                ]
+
+                start_zone = self.sim.map_graph.zones[drone.current_zone]
+                screen_x, screen_y = self.get_screen_coords(start_zone.x, start_zone.y)
+                ship.center_x = screen_x
+                ship.center_y = screen_y
+
+                target_width = max(30, self.base_radius * 3)
+                ship.scale = target_width / ship.width
+
+                ship.color = distinct_colors[drone.id % len(distinct_colors)]
+                # L'ASTUCE ARCHITECTURALE :
+                # On attache la référence du drone mathématique au sprite visuel.
+                # Cela permet au sprite de savoir "qui" il est lors de la mise à jour.
+                ship.drone_ref = drone
+
+                self.ship_list.append(ship)
+
         except Exception as e:
             print(f"Warning: Missing ship sprite in assets/ ({e})")
 
@@ -225,7 +242,7 @@ class MapVisualizer:
         # fait ramer la carte graphique
         displayed_links = set()
         for zone_name in self.sim.map_graph.graph_adj:
-            neighbors = self.sim.map_graph.get_neighbours(zone_name)
+            neighbors = self.sim.map_graph.get_neighbors(zone_name)
             zone_from = self.sim.map_graph.zones[zone_name]
 
             for neighbor_name in neighbors:
@@ -247,29 +264,33 @@ class MapVisualizer:
             screen_x, screen_y = self.get_screen_coords(zone_obj.x, zone_obj.y)
 
             if zone_obj.is_start:
-                color = arcade.color.LAVENDER_PINK
                 radius = self.base_radius
             elif zone_obj.is_end:
-                color = arcade.color.GREEN_YELLOW
                 radius = self.base_radius
             elif zone_obj.zone == "blocked" or "dead" in zone_name:
-                color = arcade.color.LIGHT_SLATE_GRAY
                 radius = int(self.base_radius * 0.7)
             elif zone_obj.zone == "restricted":
-                color = arcade.color.CADET_GREY
                 radius = int(self.base_radius * 0.8)
             elif zone_obj.zone == "priority":
-                color = arcade.color.AQUAMARINE
                 radius = int(self.base_radius * 0.8)
             else:
-                color = arcade.color.WHEAT
                 radius = int(self.base_radius * 0.8)
+
+            zone_color_name = getattr(zone_obj, "color", None)
+
+            color = getattr(
+                arcade.color, str(zone_color_name), None
+                ) if zone_color_name else None
+
+            if color is None:
+                color = arcade.color.WHITE
 
             arcade.draw_circle_filled(screen_x, screen_y, radius, color)
             arcade.draw_circle_outline(
                 screen_x, screen_y, radius, arcade.color.DIM_GRAY, 2)
 
-            current_ships = self.sim.hub_occupancy[zone_name]
+            current_ships = self.sim.hub_occupancy.get(zone_name, 0)
+
             display_name = zone_name.replace('_', '\n')
 
             if "dead" in zone_name or zone_obj.zone == "blocked":
@@ -282,5 +303,57 @@ class MapVisualizer:
             text_obj.draw()
 
         self.icon_list.draw()
-
         self.ship_list.draw()
+
+    def update_ships_animation(self, progress: float) -> None:
+        """
+        Anime les bateaux en douceur entre leur point de départ et d'arrivée.
+
+        Args:
+            progress (float): Un nombre entre 0.0 (début du tour) et 1.0 (fin du tour).
+        """
+
+        for ship in self.ship_list:
+            drone = ship.drone_ref
+
+            # 1. Récupération des coordonnées de départ et d'arrivée
+            start_zone_obj = self.sim.map_graph.zones[drone.previous_zone]
+            end_zone_obj = self.sim.map_graph.zones[drone.current_zone]
+
+            start_x, start_y = self.get_screen_coords(start_zone_obj.x, start_zone_obj.y)
+            end_x, end_y = self.get_screen_coords(end_zone_obj.x, end_zone_obj.y)
+
+            # 2. L'INTERPOLATION LINÉAIRE (Lerp)
+            # Calcule la position exacte à l'instant T
+            current_x = start_x + (end_x - start_x) * progress
+            current_y = start_y + (end_y - start_y) * progress
+
+            # 3. Le petit décalage (Jitter) pour voir l'essaim
+            offset_x = (drone.id % 3 - 1) * (self.base_radius * 0.4)
+            offset_y = ((drone.id // 3) % 3 - 1) * (self.base_radius * 0.4)
+
+            ship.center_x = current_x + offset_x
+            ship.center_y = current_y + offset_y
+
+            # # 4. ROTATION DU BATEAU (Edge case : on ne tourne pas s'il est à l'arrêt)
+            # if start_x != end_x or start_y != end_y:
+            #     # atan2 calcule l'angle en radians, on le convertit en degrés pour Arcade
+            #     angle_rad = math.atan2(end_y - start_y, end_x - start_x)
+            #     base_angle = math.degrees(angle_rad)
+            #     # Note: selon ton image ship.png, il faudra peut-être ajouter -90 à l'angle
+            #     # si l'image pointe vers le haut par défaut au lieu de la droite.
+            #     ship.angle = base_angle - 90
+
+            # --- CORRECTION 4 : La transparence intelligente (Le Final) ---
+            if drone.is_arrived:
+                if drone.previous_zone == drone.current_zone:
+                    # Bateau déjà arrivé aux tours précédents = garé et invisible
+                    ship.alpha = 0
+                else:
+                    # Bateau en train d'effectuer son TOUT DERNIER vol !
+                    # On le fait disparaître en douceur :
+                    # À 0% du trajet -> 255 (visible). À 100% du trajet -> 0 (invisible).
+                    ship.alpha = max(0, int(255 * (1.0 - progress)))
+            else:
+                # Les bateaux qui ne sont pas encore arrivés restent 100% visibles
+                ship.alpha = 255
