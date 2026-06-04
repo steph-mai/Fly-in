@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/03 10:01:48 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/04 11:53:52 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -101,6 +101,20 @@ class MapParser:
             raise ValueError(
                 f"Line {first_line_num}: The first line must define the "
                 "number of drones using nb_drones: <positive_integer>"
+            )
+        raw_value = first_line.split(":")[1].strip()
+        try:
+            value = int(raw_value)
+        except ValueError as e:
+            if "invalid literal" in str(e):
+                raise ValueError(
+                    f"Line {first_line_num}: Number of drones must be a "
+                    f"positive integer. {raw_value} is not an integer."
+                )
+        if value <= 0:
+            raise ValueError(
+                f"Line {first_line_num}: Number of drones must be a "
+                f"positive integer. {value} is not a valid number."
             )
 
         raw_dict: dict[str, Any] = {

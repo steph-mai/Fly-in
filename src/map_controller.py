@@ -67,7 +67,6 @@ class MapController(arcade.View):
 
         self.time_since_last_tick: float = 0.0
         self.tick_rate: float = 1.5
-        self.current_turn: int = 1
 
         self.score_text = arcade.Text(
             text="Turn: 1 | IN PROGRESS...",
@@ -119,8 +118,10 @@ class MapController(arcade.View):
 
         status_msg = "IN PROGRESS..." if self.sim.is_simulation_running() else "Simulation ended"
 
+        nb_turns = self.sim.stats.total_turns
+
         # On actualise les données de l'objet
-        self.score_text.text = f"Tour : {self.current_turn} | {status_msg}"
+        self.score_text.text = f"Tour : {nb_turns} | {status_msg}"
         self.score_text.color = arcade.color.WHITE if self.sim.is_simulation_running() else arcade.color.GOLD
 
         # On le dessine
@@ -151,7 +152,6 @@ class MapController(arcade.View):
                     # Affichage au format strict demandé : "D1-roof1 D2-corridorA"
                     print(" ".join(moves))
 
-                self.current_turn += 1
                 self.time_since_last_tick -= self.tick_rate
             else:
                 # La simulation est finie, on fige la dernière image

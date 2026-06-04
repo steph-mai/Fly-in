@@ -192,17 +192,15 @@ class MapVisualizer:
                 ship = arcade.Sprite(tex_ship)
 
                 distinct_colors = [
-                    arcade.color.RED, arcade.color.YELLOW, arcade.color.GREEN,
-                    arcade.color.CYAN, arcade.color.MAGENTA, arcade.color.ORANGE
+                    arcade.color.BLANCHED_ALMOND, arcade.color.BRILLIANT_LAVENDER, arcade.color.FLAVESCENT,
+                    arcade.color.GLITTER, arcade.color.GRANNY_SMITH_APPLE, arcade.color.LIGHT_SALMON
                 ]
 
-                # Placement initial
                 start_zone = self.sim.map_graph.zones[drone.current_zone]
                 screen_x, screen_y = self.get_screen_coords(start_zone.x, start_zone.y)
                 ship.center_x = screen_x
                 ship.center_y = screen_y
 
-                # On réduit un peu la taille pour qu'ils rentrent à plusieurs sur un hub
                 target_width = max(30, self.base_radius * 3)
                 ship.scale = target_width / ship.width
 
@@ -337,13 +335,14 @@ class MapVisualizer:
             ship.center_x = current_x + offset_x
             ship.center_y = current_y + offset_y
 
-            # 4. ROTATION DU BATEAU (Edge case : on ne tourne pas s'il est à l'arrêt)
-            if start_x != end_x or start_y != end_y:
-                # atan2 calcule l'angle en radians, on le convertit en degrés pour Arcade
-                angle_rad = math.atan2(end_y - start_y, end_x - start_x)
-                # Note: selon ton image ship.png, il faudra peut-être ajouter -90 à l'angle
-                # si l'image pointe vers le haut par défaut au lieu de la droite.
-                ship.angle = math.degrees(angle_rad)
+            # # 4. ROTATION DU BATEAU (Edge case : on ne tourne pas s'il est à l'arrêt)
+            # if start_x != end_x or start_y != end_y:
+            #     # atan2 calcule l'angle en radians, on le convertit en degrés pour Arcade
+            #     angle_rad = math.atan2(end_y - start_y, end_x - start_x)
+            #     base_angle = math.degrees(angle_rad)
+            #     # Note: selon ton image ship.png, il faudra peut-être ajouter -90 à l'angle
+            #     # si l'image pointe vers le haut par défaut au lieu de la droite.
+            #     ship.angle = base_angle - 90
 
             # --- CORRECTION 4 : La transparence intelligente (Le Final) ---
             if drone.is_arrived:

@@ -3,6 +3,15 @@ from src.models import MapConfigModel
 from src.drone import Drone
 import sys
 
+class SimulationStats:
+    """Conteneur strict pour les métriques secondaires de la simulation."""
+
+    def __init__(self) -> None:
+        self.total_turns: int = 0
+        self.moves_per_turn: list[int] = []
+        self.active_turns_per_drone: dict[int, int] = {}
+        self.total_path_cost: int = 0
+
 
 class Simulation:
     """Manages the global dynamic state of the drone simulation."""
@@ -41,6 +50,10 @@ class Simulation:
         self.distances_map: dict[str, int] = (
             self.map_graph.build_distances_map(self.end_zone_name))
 
+        self.stats = SimulationStats()
+        for drone in self.drones:
+            self.stats.active_turns_per_drone[drone.id] = 0
+
     def get_blocked_zones(self) -> set[str]:
         blocked_zones: set[str] = set()
         for zone_name in self.map_graph.zones:
@@ -78,7 +91,6 @@ class Simulation:
     def tick(self) -> list[str]:
         self.connection_occupancy.clear()
 
-        # CORRECTION 2 : Utilisation des bons attributs du Drone en cooldown
         for drone in self.drones:
             if not drone.is_arrived and drone.cooldown > 0:
                 route = getattr(drone, "incoming_route", (drone.previous_zone, drone.current_zone))
@@ -88,16 +100,18 @@ class Simulation:
         blocked_zones: set[str] = self.get_blocked_zones()
         blocked_connections: set[tuple[str, str]] = self.get_blocked_connections()
 
-        # Tri par distance décroissante (aspiration du flux)
         drones_to_moves = sorted(
             self.drones,
             key=lambda d: self.distances_map.get(d.current_zone, float('inf'))
         )
+        moves_this_turn = 0
 
         for drone in drones_to_moves:
             if drone.is_arrived:
                 drone.previous_zone = drone.current_zone
                 continue
+
+            self.stats.active_turns_per_drone[drone.id] += 1
 
             if drone.cooldown >= 1:
                 drone.cooldown -= 1
@@ -105,12 +119,13 @@ class Simulation:
                     drone, "current_connection", f"{drone.previous_zone}_{drone.current_zone}")
                 turn_moves.append(f"D{drone.id}-{connection_name}")
                 drone.previous_zone = drone.current_zone
+                moves_this_turn += 1
+                self.stats.total_path_cost += 1
                 continue
 
             best_next_zone = None
             min_dist = float('inf')
 
-            # 1. On lit à quelle distance le drone se trouve actuellement
             current_dist = self.distances_map.get(drone.current_zone, float('inf'))
 
             for neighbor in self.map_graph.get_neighbors(drone.current_zone):
@@ -142,6 +157,8 @@ class Simulation:
             drone.incoming_route = (previous_zone, next_zone)
 
             turn_moves.append(f"D{drone.id}-{next_zone}")
+            moves_this_turn += 1
+            self.stats.total_path_cost
 
             if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
                 blocked_zones.remove(previous_zone)
@@ -167,6 +184,8 @@ class Simulation:
             return int(move_str.split('-')[0][1:])
 
         turn_moves.sort(key=_get_drone_id)
+        self.stats.moves_per_turn.append(moves_this_turn)
+        self.stats.total_turns += 1
         return turn_moves
 
     def is_simulation_running(self) -> bool:
