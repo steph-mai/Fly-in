@@ -9,9 +9,10 @@ from pathlib import Path
 import arcade
 import arcade.gui
 from src.map_controller import MapController
-from src.simulation_factory import SimulationFactory  # NOUVEL IMPORT
+from src.simulation_factory import SimulationFactory
 from typing import Optional, Any, cast
 import sys
+
 
 class MenuView(arcade.View):
     """
@@ -102,7 +103,7 @@ class MenuView(arcade.View):
         """
         # On masque temporairement le type réel de l'objet pour Mypy
         cast(Any, self.anchor_layout).clear()
-        h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+        horizontal_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
         difficulties = ["easy", "medium", "hard", "challenger"]
 
         for diff in difficulties:
@@ -117,16 +118,41 @@ class MenuView(arcade.View):
                 event: arcade.gui.UIEvent,
                 d: str = diff
             ) -> None:
-                self.show_map_menu(d)
+                self.show_submenu(d)
             # En écrivant d=diff, Python fige et sauvegarde la valeur propre
             # à chaque bouton au moment exact où il est créé (le bouton Easy
             # sauvegarde "easy", le bouton Medium sauvegarde "medium", etc.).
-            h_box.add(button)
+            horizontal_box.add(button)
 
         self.anchor_layout.add(
-            child=h_box, anchor_x="center_x", anchor_y="bottom", align_y=60)
+            child=horizontal_box, anchor_x="center_x", anchor_y="bottom", align_y=60)
 
-    def show_map_menu(self, difficulty: str) -> None:
+        exit_style = {
+            "normal": {"bg": arcade.color.PERSIAN_PLUM, "fg": arcade.color.WHITE},
+            "hover": {"bg": arcade.color.PERSIAN_RED, "fg": arcade.color.WHITE},
+            "press": {"bg": arcade.color.PERSIAN_ORANGE, "fg": arcade.color.WHITE}
+        }
+
+        exit_button = arcade.gui.UIFlatButton(
+            text="EXIT", width=150, height=45, style=exit_style
+        )
+
+        @exit_button.event("on_click")
+        def on_click_quit(event: arcade.gui.UIEvent) -> None:
+            import sys
+            print("\n\033[93m[INFO] End of game. Program closing...\033[0m", file=sys.stderr)
+            arcade.close_window()
+            sys.exit(0)  # 0 = Fermeture volontaire et sans erreur
+
+        self.anchor_layout.add(
+            child=exit_button,
+            anchor_x="right",
+            anchor_y="top",
+            align_x=-20,
+            align_y=-20
+        )
+
+    def show_submenu(self, difficulty: str) -> None:
         """
         Scan the corresponding difficulty folder and list all available maps.
 
@@ -140,6 +166,7 @@ class MenuView(arcade.View):
 
         map_dir = Path("maps") / difficulty
         map_files = [
+            # on prend tous les fichiers à l intérieur du dossier sauf les fichiers cachés
             f for f in map_dir.iterdir() if not f.name.startswith(".")
             ] if map_dir.exists() else []
 
@@ -147,11 +174,15 @@ class MenuView(arcade.View):
             label = arcade.gui.UILabel(
                 text="No card found",
                 font_size=16,
-                font_color=arcade.color.WHITE)
+                text_color=arcade.color.WHITE)
             h_box.add(label)
         else:
             for map_path in sorted(map_files):
                 button = arcade.gui.UIFlatButton(
+                    # stem = fonctionnalité du module path
+                    # permet d'extraire uniquement le nom de base du fichier,
+                    # en coupant à la fois le chemin du dossier qui le précède,
+                    # et l'extension qui le suit.
                     text=map_path.stem,
                     width=180,
                     height=45,
@@ -181,7 +212,6 @@ class MenuView(arcade.View):
             self.show_main_menu()
 
         h_box.add(back_button)
-        h_box.add(back_button)
 
         self.anchor_layout.add(
             child=h_box, anchor_x="center_x", anchor_y="bottom", align_y=60)
@@ -194,18 +224,16 @@ class MenuView(arcade.View):
         Args:
             map_path (Path): The explicit path to the selected map file.
         """
-        # On demande à la Factory de fabriquer l'instance de simulation
         sim, error_msg = SimulationFactory.build_from_file(map_path)
 
-        # Si l'usine a rencontré une erreur, on l'affiche et on reste sur le menu
         if error_msg:
             print(error_msg)
             if arcade.get_window():
                 arcade.close_window()
             sys.exit(1)
 
-        # Si la simulation est valide, on passe à l'affichage
         if sim:
+            # désamorce le manager qui gère les boutons
             self.manager.disable()
             simulation_view = MapController(sim=sim)
             if self.window:

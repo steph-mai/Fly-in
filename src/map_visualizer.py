@@ -87,7 +87,7 @@ class MapVisualizer:
 
         self.base_radius = max(8, min(
             25, int(min(self.scale_x, self.scale_y) / 4)))
-        self.dynamic_font = max(7, min(12, int(self.scale_x / 8)))
+        self.dynamic_font = max(7, min(11, int(self.scale_x / 8)))
         self.dynamic_text_width = max(45, int(self.scale_x * 0.9))
 
     def _init_background(self, width: int, height: int) -> None:
@@ -127,7 +127,7 @@ class MapVisualizer:
                 # iles standard un peu + grandes
                 radius = int(self.base_radius * 0.8)
 
-            text_margin = radius + 6
+            text_margin = radius + 1
             if int(zone_obj.x) % 2 == 0:
                 text_y = screen_y + text_margin
                 vertical_anchor = "bottom"
@@ -258,6 +258,27 @@ class MapVisualizer:
                         start_x, start_y, end_x, end_y,
                         arcade.color.STEEL_BLUE, line_width=3
                     )
+                    # live coding
+                    connection_occupancy = (
+                        self.sim.connection_occupancy.get(
+                            (zone_name, neighbor_name), 0) +
+                        self.sim.connection_occupancy.get(
+                            (neighbor_name, zone_name), 0))
+                    max_capacities_all_neighbors = self.sim.map_graph.graph_adj.get(zone_name)
+                    max_link_capacity = max_capacities_all_neighbors.get(neighbor_name)
+                    mid_x = (start_x + end_x) / 2
+                    mid_y = (start_y + end_y) / 2
+
+                    arcade.draw_text(
+                        text=f"{connection_occupancy}/{max_link_capacity}",
+                        x=mid_x,
+                        y=mid_y + 15,
+                        color=arcade.color.BLACK,
+                        font_size=10,
+                        anchor_x="center",
+                        anchor_y="center"
+                    )
+
                     displayed_links.add(duo_zones)
 
         for zone_name, zone_obj in self.sim.map_graph.zones.items():
@@ -289,14 +310,16 @@ class MapVisualizer:
             arcade.draw_circle_outline(
                 screen_x, screen_y, radius, arcade.color.DIM_GRAY, 2)
 
-            current_ships = self.sim.hub_occupancy.get(zone_name, 0)
+            current_ships_in_zone = self.sim.hub_occupancy.get(zone_name, 0)
+            max_drones_in_zone = zone_obj.max_drones
 
-            display_name = zone_name.replace('_', '\n')
+            display_zone_name = zone_name.replace('_', '\n')
 
             if "dead" in zone_name or zone_obj.zone == "blocked":
-                label_text = f"{display_name}"
+                label_text = f"{display_zone_name}"
+
             else:
-                label_text = f"{display_name}\n({current_ships}s)"
+                label_text = f"{display_zone_name}\n({current_ships_in_zone}/{max_drones_in_zone})"
 
             text_obj = self.map_labels[zone_name]
             text_obj.text = label_text
@@ -348,14 +371,6 @@ class MapVisualizer:
             ship.center_x = current_x + offset_x
             ship.center_y = current_y + offset_y
 
-            # # --- MODIF 3 : La rotation stricte ---
-            # # Pour éviter que les bateaux ne fassent marche arrière
-            # if start_x != end_x or start_y != end_y:
-            #     import math
-            #     angle_rad = math.atan2(end_y - start_y, end_x - start_x)
-            #     ship.angle = math.degrees(angle_rad) + 180
-
-            # --- TON CODE ORIGINAL POUR LE FONDU (Intact) ---
             if drone.is_arrived:
                 if drone.previous_zone == drone.current_zone:
                     # Bateau déjà arrivé aux tours précédents = garé et invisible
@@ -364,5 +379,4 @@ class MapVisualizer:
                     # Bateau en train d'effectuer son TOUT DERNIER vol !
                     ship.alpha = max(0, int(255 * (1.0 - progress)))
             else:
-                # Les bateaux qui ne sont pas encore arrivés restent 100% visibles
                 ship.alpha = 255

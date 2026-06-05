@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/04 16:46:38 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/05 14:46:49 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -83,7 +83,7 @@ class MapConfigModel(BaseModel):
         connections (list[Connection]): A list of all validated connections.
     """
     model_config = ConfigDict(extra='forbid')
-    nb_drones: int = Field(..., ge=0)
+    nb_drones: int = Field(..., ge=1)
     zones: list[Zone] = Field(..., min_length=1)
     connections: list[Connection] = Field(..., min_length=1)
 

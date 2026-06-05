@@ -5,7 +5,7 @@ Handles the entire data pipeline and formats specific error messages.
 
 from pathlib import Path
 from pydantic import ValidationError
-
+from src.parser import MapSyntaxError
 from src.loader import Loader
 from src.parser import MapParser
 from src.models import MapConfigModel
@@ -36,17 +36,14 @@ class SimulationFactory:
             sim = Simulation(valid_map)
             return sim, None
 
-        except (FileNotFoundError, IsADirectoryError) as e:
-            return None, f"\033[91m[FILE ERROR]\033[0m {e}"
-        except PermissionError as e:
-            return None, f"\033[91m[PERMISSION ERROR]\033[0m {e}"
+        except MapSyntaxError as e:
+            return None, f"\033[91m[SYNTAX ERROR]\033[0m {e}"
         except ValidationError as e:
             error = e.errors()[0]
             raw_message = error["msg"]
             clean_message = raw_message.replace("Value error,", "")
-            return None, f"\033[91m[VALUE ERROR]\033[0m {clean_message}"
+            return None, f"\033[91m[VALIDATION ERROR]\033[0m {clean_message}"
         except ValueError as e:
             return None, f"\033[91m[VALUE ERROR]\033[0m {e}"
         except Exception as e:
             return None, f"\033[91m[ERROR]\033[0m {e}"
-

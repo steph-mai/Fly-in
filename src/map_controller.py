@@ -9,7 +9,6 @@ import arcade
 import arcade.gui
 from src.simulation import Simulation
 from src.map_visualizer import MapVisualizer
-import math
 
 
 class MapController(arcade.View):
@@ -27,18 +26,17 @@ class MapController(arcade.View):
         Initialize the map view with a pre-loaded simulation and configure the window.
         """
         super().__init__()
-
-        # 1. On reçoit la simulation déjà chargée et validée !
         self.sim = sim
 
-        # 2. Le reste de ta logique de calcul de taille d'écran ne change pas
         x_coords = [zone.x for zone in self.sim.map_graph.zones.values()]
         y_coords = [zone.y for zone in self.sim.map_graph.zones.values()]
 
         map_width_units = (
-            max(x_coords) if x_coords else 1) - (min(x_coords) if x_coords else 0)
+            max(x_coords) if x_coords else 1
+            ) - (min(x_coords) if x_coords else 0)
         map_height_units = (
-            max(y_coords) if y_coords else 1) - (min(y_coords) if y_coords else 0)
+            max(y_coords) if y_coords else 1
+            ) - (min(y_coords) if y_coords else 0)
 
         map_width_units = max(1, map_width_units)
         map_height_units = max(1, map_height_units)
@@ -67,6 +65,7 @@ class MapController(arcade.View):
 
         self.time_since_last_tick: float = 0.0
         self.tick_rate: float = 1.5
+        self.end_timer: float = 0.0
 
         center_x = self.window.width / 2
         bottom_margin = 30
@@ -107,11 +106,19 @@ class MapController(arcade.View):
         self.manager.add(self.anchor_layout)
 
     def go_back_to_menu(self) -> None:
-        """Disable the UI and transition back to the main menu view."""
+        """Disable the UI, clean the terminal and transition back to the main menu view."""
         self.manager.disable()
 
-        # Local import to prevent circular dependency issues
-        from src.menu_view import MenuView
+        # \033[H ramène le curseur en haut
+        # \033[2J efface tout l'écran
+        print("\033[H\033[2J", end="")
+
+        print("========================================")
+        print("             MAIN MENU             ")
+        print("========================================")
+        print("\nAwaiting card selection...\n")
+
+        from src.menu_view import MenuView  # Import local pour éviter les imports circulaires
         if self.window:
             self.window.show_view(MenuView())
 
@@ -171,6 +178,15 @@ class MapController(arcade.View):
                 # La simulation est finie, on fige la dernière image
                 self.time_since_last_tick = self.tick_rate
                 self.visualizer.update_ships_animation(1.0)
+
+                self.end_timer += delta_time
+                if self.end_timer >= 5:
+                    self.manager.disable()
+
+                from src.stats_view import StatsView
+                stats_view = StatsView(self.sim.stats, self.sim.total_drones)
+                self.window.show_view(stats_view)
+
                 return
 
         # 3. Calcul de l'interpolation (Lerp) pour l'animation à l'écran
