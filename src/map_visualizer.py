@@ -316,17 +316,30 @@ class MapVisualizer:
         for ship in self.ship_list:
             drone = ship.drone_ref
 
-            # 1. Récupération des coordonnées de départ et d'arrivée
-            start_zone_obj = self.sim.map_graph.zones[drone.previous_zone]
-            end_zone_obj = self.sim.map_graph.zones[drone.current_zone]
+            # On utilise incoming_route pour éviter que le bateau ne se téléporte
+            # s'il est au milieu d'un transit de 2 tours.
+            route_start, route_end = getattr(drone, "incoming_route", (drone.previous_zone, drone.current_zone))
+
+            start_zone_obj = self.sim.map_graph.zones[route_start]
+            end_zone_obj = self.sim.map_graph.zones[route_end]
 
             start_x, start_y = self.get_screen_coords(start_zone_obj.x, start_zone_obj.y)
             end_x, end_y = self.get_screen_coords(end_zone_obj.x, end_zone_obj.y)
 
+            # --- MODIF 2 : Le calcul du Lerp fractionné ---
+            actual_progress = progress
+            if end_zone_obj.zone == "restricted":
+                if drone.cooldown == 1:
+                    # Tour 1 : 0% à 50% de la ligne
+                    actual_progress = progress * 0.5
+                else:
+                    # Tour 2 : 50% à 100% de la ligne
+                    actual_progress = 0.5 + (progress * 0.5)
+
             # 2. L'INTERPOLATION LINÉAIRE (Lerp)
-            # Calcule la position exacte à l'instant T
-            current_x = start_x + (end_x - start_x) * progress
-            current_y = start_y + (end_y - start_y) * progress
+            # On utilise désormais actual_progress au lieu du progress brut
+            current_x = start_x + (end_x - start_x) * actual_progress
+            current_y = start_y + (end_y - start_y) * actual_progress
 
             # 3. Le petit décalage (Jitter) pour voir l'essaim
             offset_x = (drone.id % 3 - 1) * (self.base_radius * 0.4)
@@ -335,14 +348,20 @@ class MapVisualizer:
             ship.center_x = current_x + offset_x
             ship.center_y = current_y + offset_y
 
+            # # --- MODIF 3 : La rotation stricte ---
+            # # Pour éviter que les bateaux ne fassent marche arrière
+            # if start_x != end_x or start_y != end_y:
+            #     import math
+            #     angle_rad = math.atan2(end_y - start_y, end_x - start_x)
+            #     ship.angle = math.degrees(angle_rad) + 180
+
+            # --- TON CODE ORIGINAL POUR LE FONDU (Intact) ---
             if drone.is_arrived:
                 if drone.previous_zone == drone.current_zone:
                     # Bateau déjà arrivé aux tours précédents = garé et invisible
                     ship.alpha = 0
                 else:
                     # Bateau en train d'effectuer son TOUT DERNIER vol !
-                    # On le fait disparaître en douceur :
-                    # À 0% du trajet -> 255 (visible). À 100% du trajet -> 0 (invisible).
                     ship.alpha = max(0, int(255 * (1.0 - progress)))
             else:
                 # Les bateaux qui ne sont pas encore arrivés restent 100% visibles

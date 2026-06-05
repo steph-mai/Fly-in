@@ -117,6 +117,7 @@ class Simulation:
         for drone in drones_to_moves:
             if drone.is_arrived:
                 drone.previous_zone = drone.current_zone
+                drone.incoming_route = (drone.current_zone, drone.current_zone)
                 continue
 
             self.stats.active_turns_per_drone[drone.id] += 1
@@ -126,7 +127,8 @@ class Simulation:
                 connection_name = getattr(
                     drone, "current_connection", f"{drone.previous_zone}_{drone.current_zone}")
                 turn_moves.append(f"D{drone.id}-{connection_name}")
-                drone.previous_zone = drone.current_zone
+                # drone.previous_zone = drone.current_zone
+                # drone.incoming_route = (drone.current_zone, drone.current_zone)
                 moves_this_turn += 1
                 self.stats.total_path_cost += 1
                 continue
@@ -201,6 +203,7 @@ class Simulation:
         # 3. Figer les drones restés bloqués après toutes les passes
         for drone in drones_waiting:
             drone.previous_zone = drone.current_zone
+            drone.incoming_route = (drone.current_zone, drone.current_zone)
 
         # 4. Finalisation des statistiques du tour (Garantit l'absence d'erreurs IndexError)
         self.stats.moves_per_turn.append(moves_this_turn)
