@@ -67,6 +67,8 @@ class MapController(arcade.View):
         self.tick_rate: float = 1.5
         self.end_timer: float = 0.0
 
+        self.is_simulation_finished = False
+
         center_x = self.window.width / 2
         bottom_margin = 30
         self.score_text = arcade.Text(
@@ -178,14 +180,14 @@ class MapController(arcade.View):
                 # La simulation est finie, on fige la dernière image
                 self.time_since_last_tick = self.tick_rate
                 self.visualizer.update_ships_animation(1.0)
-
+                self.sim.connection_occupancy.clear()
                 self.end_timer += delta_time
-                if self.end_timer >= 5:
+                if self.end_timer >= 3:
                     self.manager.disable()
 
-                from src.stats_view import StatsView
-                stats_view = StatsView(self.sim.stats, self.sim.total_drones)
-                self.window.show_view(stats_view)
+                    from src.stats_view import StatsView
+                    stats_view = StatsView(self.sim.stats, self.sim.total_drones)
+                    self.window.show_view(stats_view)
 
                 return
 

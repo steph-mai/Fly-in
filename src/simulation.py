@@ -134,34 +134,53 @@ class Simulation:
                 continue
 
             drones_waiting.append(drone)
-
-        # 2. Le Multi-pass (Réaction en chaîne)
+# 2. Le Multi-pass (Réaction en chaîne)
         has_freed_space = True
         while has_freed_space:
             has_freed_space = False
 
             for drone in drones_waiting[:]:
                 best_next_zone = None
-                min_dist = float('inf')
                 current_dist = self.distances_map.get(drone.current_zone, float('inf'))
+
+                # LA CORRECTION MAJEURE : "Attendre" a désormais un score !
+                # Avancer = Score de (current_dist - 1)
+                # Déviation latérale = Score de (current_dist + 1)
+                # Attendre = Score de (current_dist + 1.5)
+                # Reculer = Score de (current_dist + 2.5) -> Sera donc toujours ignoré.
+                min_score = current_dist + 1.5
 
                 for neighbor in self.map_graph.get_neighbors(drone.current_zone):
                     if neighbor in blocked_zones:
                         continue
                     if (drone.current_zone, neighbor) in blocked_connections:
                         continue
+
                     neighbor_obj = self.map_graph.zones.get(neighbor)
                     if neighbor_obj.zone == "blocked":
                         continue
 
+                    # Anti Ping-Pong STRICT : On ne retourne JAMAIS d'où l'on vient,
+                    # même si on a attendu 3 tours sur place.
+                    if neighbor == drone.previous_zone:
+                        continue
+
                     dist = self.distances_map.get(neighbor, float('inf'))
-                    if dist < min_dist and dist < current_dist:
-                        min_dist = dist
+
+                    # Calcul du score
+                    score = dist
+                    if dist >= current_dist:
+                        # Pénalité stricte (+1) pour un mouvement qui ne rapproche pas
+                        score += (dist - current_dist + 1)
+
+                    if score < min_score:
+                        min_score = score
                         best_next_zone = neighbor
 
                 if not best_next_zone:
-                    continue  # Il reste dans drones_waiting pour la passe suivante
+                    continue  # Le drone préfère attendre (score 1.5) plutôt que de reculer.
 
+                # Application du mouvement...
                 next_zone = best_next_zone
                 previous_zone = drone.current_zone
                 drone.previous_zone = previous_zone
@@ -174,7 +193,7 @@ class Simulation:
 
                 turn_moves.append(f"D{drone.id}-{next_zone}")
                 moves_this_turn += 1
-                self.stats.total_path_cost += 1  # Typo corrigée
+                self.stats.total_path_cost += 1
 
                 if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
                     blocked_zones.remove(previous_zone)
@@ -185,6 +204,7 @@ class Simulation:
 
                 if next_zone == self.end_zone_name:
                     drone.is_arrived = True
+                    self.hub_occupancy[next_zone] -= 1
 
                 zone_obj = self.map_graph.zones.get(next_zone)
                 if zone_obj and zone_obj.zone == "restricted":
@@ -196,13 +216,15 @@ class Simulation:
                     blocked_connections.add((previous_zone, next_zone))
                     blocked_connections.add((next_zone, previous_zone))
 
-                # Le drone a bougé : on le retire et on relance une passe
                 drones_waiting.remove(drone)
                 has_freed_space = True
 
-        # 3. Figer les drones restés bloqués après toutes les passes
+        # 3. Figer les drones restés bloqués (CORRECTION DE L'AMNÉSIE)
         for drone in drones_waiting:
-            drone.previous_zone = drone.current_zone
+            # On supprime 'drone.previous_zone = drone.current_zone'
+            # Le drone garde en mémoire son vrai point d'entrée pour ne pas faire demi-tour.
+
+            # On libère juste la route entrante pour les drones derrière lui
             drone.incoming_route = (drone.current_zone, drone.current_zone)
 
         # 4. Finalisation des statistiques du tour (Garantit l'absence d'erreurs IndexError)

@@ -310,7 +310,17 @@ class MapVisualizer:
             arcade.draw_circle_outline(
                 screen_x, screen_y, radius, arcade.color.DIM_GRAY, 2)
 
-            current_ships_in_zone = self.sim.hub_occupancy.get(zone_name, 0)
+            current_ships_in_zone = 0
+            for ship in self.ship_list:
+                if ship.alpha == 0:
+                    continue
+                # Calcul de la distance physique entre le bateau et le centre du hub
+                dist = math.hypot(ship.center_x - screen_x, ship.center_y - screen_y)
+                # Si le bateau est dans le rayon du hub (avec marge pour le jitter)
+                if dist <= radius + (self.base_radius * 0.5):
+                    current_ships_in_zone += 1
+            # ------------------------------------------------------
+
             max_drones_in_zone = zone_obj.max_drones
 
             display_zone_name = zone_name.replace('_', '\n')

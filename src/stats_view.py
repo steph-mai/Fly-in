@@ -1,6 +1,7 @@
 import arcade
 import arcade.gui
 
+
 class StatsView(arcade.View):
     def __init__(self, stats, nb_drones: int):
         """
@@ -25,8 +26,8 @@ class StatsView(arcade.View):
 
         # Création du bouton de retour au menu
         self.v_box = arcade.gui.UIBoxLayout()
-        menu_button = arcade.gui.UIFlatButton(text="Retour au Menu Principal", width=250)
-
+        menu_button = arcade.gui.UIFlatButton(text="<- RETURN", width=150)
+        self.v_box.add(menu_button)
         # Ce qui se passe quand on clique sur le bouton
         @menu_button.event("on_click")
         def on_click_menu(event):
@@ -41,45 +42,45 @@ class StatsView(arcade.View):
             from src.menu_view import MenuView
             self.window.show_view(MenuView())
 
-            anchor_layout = arcade.gui.UIAnchorLayout()
+        anchor_layout = arcade.gui.UIAnchorLayout()
 
-            anchor_layout.add(
-                child=self.v_box,
-                anchor_x="center_x",
-                anchor_y="bottom",
-                align_y=90
-            )
-            self.manager.add(anchor_layout)
+        anchor_layout.add(
+            child=self.v_box,
+            anchor_x="left",
+            anchor_y="top",
+            align_y=0
+        )
+        self.manager.add(anchor_layout)
 
     def on_show_view(self):
         """Appelé automatiquement quand cette vue s'affiche."""
-        arcade.set_background_color(arcade.color.EERIE_BLACK)
+        arcade.set_background_color(arcade.color.CATALINA_BLUE)
 
     def on_draw(self):
         """Dessine les textes à l'écran."""
         self.clear()
 
         center_x = self.window.width / 2
-        start_y = self.window.height - 100
+        start_y = self.window.height - 120
 
         # Titre
-        arcade.draw_text("RAPPORT DE MISSION", center_x, start_y,
-                         arcade.color.GOLD, font_size=40, anchor_x="center", bold=True)
+        arcade.draw_text("MISSION REPORT", center_x, start_y,
+                         arcade.color.CARIBBEAN_GREEN, font_size=40, anchor_x="center", bold=True)
 
-        arcade.draw_text("Simulation terminée avec succès.", center_x, start_y - 50,
+        arcade.draw_text("Simulation completed successfully.", center_x, start_y - 60,
                          arcade.color.LIGHT_GRAY, font_size=18, anchor_x="center")
 
         # --- AFFICHAGE DES STATS ---
         stats_text = (
-            f"Score Final (Tours) : {self.stats.total_turns}\n\n"
-            f"Drones déployés : {self.nb_drones}\n"
-            f"Coût total du chemin : {self.stats.total_path_cost}\n\n"
-            f"Efficacité (Mvts/tour) : {self.avg_moves_per_turn:.2f}\n"
-            f"Tours moyens par drone : {self.avg_turns_per_drone:.2f}"
+            f"Final score (total number of turns) : {self.stats.total_turns}\n\n"
+            f"Number of drones : {self.nb_drones}\n"
+            f"Total path cost : {self.stats.total_path_cost}\n\n"
+            f"Number of drones moved per turn : {self.avg_moves_per_turn:.2f}\n"
+            f"Average number of turns per drone : {self.avg_turns_per_drone:.2f}"
         )
 
-        arcade.draw_text(stats_text, center_x, start_y - 250,
-                         arcade.color.WHITE, font_size=22, anchor_x="center",
+        arcade.draw_text(stats_text, center_x, start_y - 200,
+                         arcade.color.CELESTE, font_size=22, anchor_x="center",
                          align="center", multiline=True, width=600)
 
         # Dessine le bouton
