@@ -1,7 +1,8 @@
-from src.map_graph import MapGraph
-from src.models import MapConfigModel
-from src.drone import Drone
+from src.engine.map_graph import MapGraph
+from src.parsing.models import MapConfigModel
+from src.engine.drone import Drone
 import sys
+
 
 class SimulationStats:
     """Conteneur strict pour les métriques secondaires de la simulation."""
@@ -17,14 +18,26 @@ class Simulation:
     """Manages the global dynamic state of the drone simulation."""
 
     def __init__(self, map_config: MapConfigModel) -> None:
-        self.total_drones: int = map_config.nb_drones
-        self.map_graph: MapGraph = MapGraph(map_config)
+        """Initialise la simulation et déclenche le setup."""
+        self.total_drones = map_config.nb_drones
+        self.map_graph = MapGraph(map_config)
+        self.hub_occupancy = {}
+        self.connection_occupancy = {}
+        self.stats = SimulationStats()
 
-        # CORRECTION 1 : Initialisation correcte des dictionnaires standards
-        self.hub_occupancy: dict[str, int] = {}
-        self.connection_occupancy: dict[tuple[str, str], int] = {}
+        # On délègue toute la logique ici
+        self._setup_simulation()
 
+    def _setup_simulation(self) -> None:
+        """Gère toute la logique de configuration initiale."""
         self._initialize_drones()
+        self.distances_map = self.map_graph.build_distances_map(self.end_zone_name)
+        self._validate_topology()
+
+    def _validate_topology(self) -> None:
+        """Vérifie si la carte est solvable."""
+        if self.distances_map.get(self.start_zone_name, float('inf')) == float('inf'):
+            raise ValueError("Map un-solvable: start/end or mandatory zones are blocked.")
 
     def _initialize_drones(self) -> None:
         """Finds the start hub and places all drones there initially."""

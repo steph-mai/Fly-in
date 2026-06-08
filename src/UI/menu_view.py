@@ -8,9 +8,10 @@ and specific map files using the Arcade GUI system.
 from pathlib import Path
 import arcade
 import arcade.gui
-from src.map_controller import MapController
-from src.simulation_factory import SimulationFactory
+from src.UI.map_controller import MapController
+from src.parsing.simulation_factory import SimulationFactory
 from typing import Optional, Any, cast
+from src.parsing.errors import FlyInError
 import sys
 
 
@@ -224,20 +225,30 @@ class MenuView(arcade.View):
         Args:
             map_path (Path): The explicit path to the selected map file.
         """
-        sim, error_msg = SimulationFactory.build_from_file(map_path)
+        try:
+            # 1. On tente de construire la simulation (renvoie l'objet directement)
+            sim = SimulationFactory.build_from_file(map_path)
 
-        if error_msg:
-            print(error_msg)
+            # 2. Si aucune erreur n'a été levée, on lance la vue
+            self.manager.disable()
+            simulation_view = MapController(sim=sim)
+
+            if self.window:
+                self.window.show_view(simulation_view)
+
+        except FlyInError as e:
+            # 3A. Edge Case métier : La carte contient une erreur de syntaxe ou de logique
+            print(f"\n\033[91m{e}\033[0m")  # Le message contient déjà les couleurs définies dans tes erreurs/factory
             if arcade.get_window():
                 arcade.close_window()
             sys.exit(1)
 
-        if sim:
-            # désamorce le manager qui gère les boutons
-            self.manager.disable()
-            simulation_view = MapController(sim=sim)
-            if self.window:
-                self.window.show_view(simulation_view)
+        except Exception as e:
+            # 3B. Edge Case critique : Une erreur Python native non anticipée
+            print(f"\n\033[91m[CRITICAL ERROR]\033[0m An unexpected error has occurred.: {e}")
+            if arcade.get_window():
+                arcade.close_window()
+            sys.exit(1)
 
     def on_draw(self) -> None:
         """Render the background sprite, the cinematic title, and all UI

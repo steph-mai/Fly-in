@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from src.simulation_factory import SimulationFactory
+from src.parsing.simulation_factory import SimulationFactory
 
 
 def main() -> None:

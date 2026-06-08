@@ -3,10 +3,10 @@
 #                                                      :::      ::::::::    #
 #  models.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/05 14:46:49 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/08 15:33:51 by stephanie       ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -23,85 +23,33 @@ before initializing the simulation.
 
 
 class Zone(BaseModel):
-    """
-    Represents a single hub or zone within the map.
-
-    Attributes:
-        name (str): The unique identifier for the zone.
-        x (int): The X-coordinate on the grid.
-        y (int): The Y-coordinate on the grid.
-        is_start (bool): True if this is the starting hub for the drones.
-        is_end (bool): True if this is the destination hub.
-        zone (Literal): The type of zone, defaulting to 'normal'.
-        color (str | None): Optional color metadata for rendering.
-        max_drones (int | None): The maximum drone capacity of the hub.
-        line_num (int): The original line number in the map file (excluded
-        from export).
-    """
     model_config = ConfigDict(extra='forbid')
-    name: str = Field(..., min_length=1)
-    # avec exlude, on stocke le numéro de la ligne mais on le cache
+    name: str  # Retrait de min_length=1 (déjà garanti par ton Regex de parsing)
     x: int
     y: int
     is_start: bool
     is_end: bool
     zone: Literal['normal', 'blocked', 'restricted', 'priority'] = 'normal'
     color: str | None = None
-    max_drones: int = Field(default=1, ge=1)
+    max_drones: int = 1  # Retrait de ge=1
     line_num: int = Field(exclude=True)
 
 
 class Connection(BaseModel):
-    """
-    Represents a bidirectional path between two zones.
-
-    Attributes:
-        zone1 (str): The name of the first connected zone.
-        zone2 (str): The name of the second connected zone.
-        max_link_capacity (int): The maximum number of drones allowed
-        on this link.
-        line_num (int): The original line number in the map file
-        (excluded from export).
-    """
-    zone1: str = Field(..., min_length=1)
-    zone2: str = Field(..., min_length=1)
-    max_link_capacity: int = Field(..., ge=1)
+    zone1: str  # Retrait de min_length=1
+    zone2: str  # Retrait de min_length=1
+    max_link_capacity: int  # Retrait de ge=1
     line_num: int = Field(exclude=True)
 
 
 class MapConfigModel(BaseModel):
-    """
-    The root configuration model for the entire map.
-
-    This model performs cross-validation after instantiation to ensure
-    that all logical constraints (unique coordinates, valid connections,
-    correct number of hubs) are respected.
-
-    Attributes:
-        nb_drones (int): The total number of drones in the simulation.
-        zones (list[Zone]): A list of all validated zones.
-        connections (list[Connection]): A list of all validated connections.
-    """
     model_config = ConfigDict(extra='forbid')
-    nb_drones: int = Field(..., ge=1)
-    zones: list[Zone] = Field(..., min_length=1)
-    connections: list[Connection] = Field(..., min_length=1)
+    nb_drones: int  # Retrait de ge=1 (déjà géré par ton parser)
+    zones: list[Zone]
+    connections: list[Connection]
 
     @model_validator(mode='after')
     def validate_config(self) -> 'MapConfigModel':
-        """
-        Validates the global logic of the map configuration.
-
-        Checks for duplicate zone names, duplicate coordinates, valid
-        start/end hub counts, capacity constraints, and valid connections.
-
-        Returns:
-            MapConfigModel: The fully validated model instance.
-
-        Raises:
-            ValueError: If any logical constraint is violated.
-        """
-
         start_zone_lines: list[int] = []
         end_zone_lines: list[int] = []
         zones_names: set[str] = set()
@@ -109,6 +57,10 @@ class MapConfigModel(BaseModel):
         seen_connection: set[tuple[str, str]] = set()
 
         for zone in self.zones:
+            # --- AJOUT MINIMUM : Validation de max_drones avec ligne ---
+            if zone.max_drones < 1:
+                raise ValueError(f"Line {zone.line_num}: max_drones must be at least 1.")
+
             if zone.name in zones_names:
                 raise ValueError(f"Line {zone.line_num}: Cannot use the same "
                                  f"zone name '{zone.name}' more than once.")
@@ -136,6 +88,7 @@ class MapConfigModel(BaseModel):
                 raise ValueError(f"Line {zone.line_num}: Another zone already "
                                  f"exists at these coordinates: {coord}")
             seen_zone_coord.add(coord)
+
         number_start_zones: int = len(start_zone_lines)
         number_end_zones: int = len(end_zone_lines)
         if number_start_zones == 0:
@@ -154,6 +107,10 @@ class MapConfigModel(BaseModel):
                 )
 
         for connection in self.connections:
+            # --- AJOUT MINIMUM : Validation de max_link_capacity avec ligne ---
+            if connection.max_link_capacity < 1:
+                raise ValueError(f"Line {connection.line_num}: max_link_capacity must be at least 1.")
+
             connection_tuple = (connection.zone1, connection.zone2)
             reverse_connection_tuple = (connection.zone2, connection.zone1)
 
