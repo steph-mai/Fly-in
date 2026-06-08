@@ -1,0 +1,96 @@
+def tick(self) -> list[str]:
+        # 1. GESTION DU COOLDOWN : Reconstruire l'occupation des routes
+        # Avant de nettoyer, on garde la trace des drones toujours en vol ce tour-ci
+        self.connection_occupancy.clear()
+        for drone in self.drones:
+            if not drone.is_arrived and drone.cooldown > 0:
+                self.connection_occupancy[(drone.previous_zone, drone.current_zone)] += 1
+
+        turn_moves: list[str] = []
+        blocked_zones: set[str] = self.get_blocked_zones()
+        blocked_connections: set[tuple[str, str]] = self.get_blocked_connections()
+
+        # 2. L'ORDRE D'ITÉRATION MAGIQUE (Aspiration des flux)
+        # On trie les drones : ceux avec la distance la plus faible vers le but bougent en premier !
+        drones_to_move = sorted(
+            self.drones,
+            key=lambda d: self.distances_map.get(d.current_zone, float('inf'))
+        )
+
+        for drone in drones_to_move:
+            if drone.is_arrived:
+                continue
+
+            if drone.cooldown >= 1:
+                drone.cooldown -= 1
+                connection_name = getattr(
+                    drone, "current_connection", f"{drone.previous_zone}_{drone.current_zone}")
+                turn_moves.append(f"D{drone.id}-{connection_name}")
+                continue
+
+            best_next_zone = None
+            min_dist = float('inf')
+
+            # 3. LECTURE DE LA HEATMAP
+            for neighbor in self.map_graph.get_neighbors(drone.current_zone):
+                if neighbor in blocked_zones:
+                    continue
+                if (drone.current_zone, neighbor) in blocked_connections:
+                    continue
+
+                dist = self.distances_map.get(neighbor, float('inf'))
+
+                if dist < min_dist:
+                    min_dist = dist
+                    best_next_zone = neighbor
+
+            if not best_next_zone:
+                continue
+
+            next_zone = best_next_zone
+
+            # Mise à jour de l'historique du drone
+            previous_zone = drone.current_zone
+            drone.previous_zone = previous_zone
+            drone.current_connection = f"{previous_zone}_{next_zone}"
+
+            # Déplacement physique
+            self.hub_occupancy[next_zone] += 1
+            self.hub_occupancy[previous_zone] -= 1
+            drone.current_zone = next_zone
+
+            turn_moves.append(f"D{drone.id}-{next_zone}")
+
+            # 4. LIBÉRATION IMMÉDIATE (Pour que le drone suivant en profite de suite)
+            if self._is_enough_place_in_zone(previous_zone) and previous_zone in blocked_zones:
+                blocked_zones.remove(previous_zone)
+
+            self.connection_occupancy[(previous_zone, next_zone)] += 1
+
+            if next_zone == self.end_zone_name:
+                drone.is_arrived = True
+
+            zone_obj = self.map_graph.zones.get(next_zone)
+            if zone_obj and zone_obj.zone == "restricted":
+                drone.cooldown += 1
+
+            # Blocage dynamique
+            if not self._is_enough_place_in_zone(next_zone):
+                blocked_zones.add(next_zone)
+            if not self._is_enough_place_in_connection(previous_zone, next_zone):
+                blocked_connections.add((previous_zone, next_zone))
+                blocked_connections.add((next_zone, previous_zone))
+
+        # 5. FORMATTAGE PROPRE POUR LE CORRECTEUR
+        # Vu qu'on a fait bouger les drones dans le désordre, on retrie les jetons par ID
+        # pour que la ligne soit propre : "D1-a D2-b D3-c"
+        def sort_by_id(move_str: str) -> int:
+            try:
+                # Extrait le numéro après le 'D' et avant le '-'
+                return int(move_str.split('-')[0][1:])
+            except ValueError:
+                return 0
+
+        turn_moves.sort(key=sort_by_id)
+
+        return turn_moves
