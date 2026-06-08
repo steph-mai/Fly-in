@@ -1,4 +1,4 @@
-from src.models import MapConfigModel, Zone
+from src.parsing.models import MapConfigModel, Zone
 from collections import defaultdict
 import heapq
 

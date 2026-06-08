@@ -7,8 +7,8 @@ and the rendering engine.
 
 import arcade
 import arcade.gui
-from src.simulation import Simulation
-from src.map_visualizer import MapVisualizer
+from src.engine.simulation import Simulation
+from src.UI.map_visualizer import MapVisualizer
 
 
 class MapController(arcade.View):
@@ -120,7 +120,7 @@ class MapController(arcade.View):
         print("========================================")
         print("\nAwaiting card selection...\n")
 
-        from src.menu_view import MenuView  # Import local pour éviter les imports circulaires
+        from src.UI.menu_view import MenuView  # Import local pour éviter les imports circulaires
         if self.window:
             self.window.show_view(MenuView())
 
@@ -185,7 +185,7 @@ class MapController(arcade.View):
                 if self.end_timer >= 3:
                     self.manager.disable()
 
-                    from src.stats_view import StatsView
+                    from src.UI.stats_view import StatsView
                     stats_view = StatsView(self.sim.stats, self.sim.total_drones)
                     self.window.show_view(stats_view)
 

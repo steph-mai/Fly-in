@@ -6,7 +6,7 @@ for the simulation map.
 """
 
 import arcade
-from src.simulation import Simulation
+from src.engine.simulation import Simulation
 from typing import Optional
 import math
 
@@ -149,6 +149,39 @@ class MapVisualizer:
             )
             self.map_labels[zone_name] = text_obj
 
+        self.link_labels: dict[tuple[str, str], arcade.Text] = {}
+        displayed_links = set()
+
+        for zone_name in self.sim.map_graph.graph_adj:
+            neighbors = self.sim.map_graph.get_neighbors(zone_name)
+            zone_from = self.sim.map_graph.zones[zone_name]
+
+            for neighbor_name in neighbors:
+                duo_zones = tuple(sorted([zone_name, neighbor_name]))
+
+                # On évite de créer deux labels pour la même route (A-B et B-A)
+                if duo_zones not in displayed_links:
+                    zone_to = self.sim.map_graph.zones[neighbor_name]
+
+                    start_x, start_y = self.get_screen_coords(zone_from.x, zone_from.y)
+                    end_x, end_y = self.get_screen_coords(zone_to.x, zone_to.y)
+
+                    mid_x = (start_x + end_x) / 2
+                    mid_y = (start_y + end_y) / 2
+
+                    # Création de l'objet Text pré-compilé en VRAM
+                    link_text_obj = arcade.Text(
+                        text="",
+                        x=mid_x,
+                        y=mid_y + 15,
+                        color=arcade.color.BLACK,
+                        font_size=10,
+                        anchor_x="center",
+                        anchor_y="center"
+                    )
+                    self.link_labels[duo_zones] = link_text_obj
+                    displayed_links.add(duo_zones)
+
     def _init_sprites(self) -> None:
         """Load all interactive sprites (islands, icons, ships)."""
         try:
@@ -269,15 +302,16 @@ class MapVisualizer:
                     mid_x = (start_x + end_x) / 2
                     mid_y = (start_y + end_y) / 2
 
-                    arcade.draw_text(
-                        text=f"{connection_occupancy}/{max_link_capacity}",
-                        x=mid_x,
-                        y=mid_y + 15,
-                        color=arcade.color.BLACK,
-                        font_size=10,
-                        anchor_x="center",
-                        anchor_y="center"
-                    )
+                    # Dans draw_everything(), à la place de arcade.draw_text(...)
+
+                    # 1. On récupère le label pré-compilé pour cette route
+                    text_obj = self.link_labels[duo_zones]
+
+                    # 2. On met à jour uniquement la chaîne de caractères (0/1, 1/1...)
+                    text_obj.text = f"{connection_occupancy}/{max_link_capacity}"
+
+                    # 3. On ordonne à la carte graphique de l'afficher instantanément
+                    text_obj.draw()
 
                     displayed_links.add(duo_zones)
 

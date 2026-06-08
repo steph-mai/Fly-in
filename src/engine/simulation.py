@@ -1,6 +1,6 @@
-from src.map_graph import MapGraph
-from src.models import MapConfigModel
-from src.drone import Drone
+from src.engine.map_graph import MapGraph
+from src.parsing.models import MapConfigModel
+from src.engine.drone import Drone
 import sys
 
 class SimulationStats:
