@@ -3,11 +3,25 @@ import arcade.gui
 
 
 class StatsView(arcade.View):
+    """View displaying simulation statistics.
+
+    Attributes:
+        stats (SimulationStats): Statistics produced by the simulation.
+        nb_drones (int): Total number of drones (used for averages).
+        manager (arcade.gui.UIManager): UI manager for interactive widgets.
+        v_box (arcade.gui.UIBoxLayout): Vertical layout for menu button.
+        title_text (arcade.Text): Precomputed title text object.
+        subtitle_text (arcade.Text): Precomputed subtitle text object.
+        stats_text_obj (arcade.Text): Precomputed statistics text object.
+    """
+
     def __init__(self, stats, nb_drones: int):
-        """
-        Initialise la vue des statistiques.
-        :param stats: L'objet SimulationStats rempli par la simulation.
-        :param nb_drones: Le nombre total de drones (pour les moyennes).
+        """Initialize the stats view.
+
+        Args:
+            stats (SimulationStats): Object containing aggregated simulation
+            metrics.
+            nb_drones (int): Total number of drones (used to compute averages).
         """
         super().__init__()
         self.stats = stats
@@ -29,20 +43,17 @@ class StatsView(arcade.View):
         @menu_button.event("on_click")
         def on_click_menu(event):
             self.manager.disable()
-            # Nettoyage du terminal
+
             print("\033[H\033[2J", end="")
             print("========================================")
             print("               MAIN MENU                ")
             print("========================================\n")
 
-            # Retour au menu
             from src.UI.menu_view import MenuView
             self.window.show_view(MenuView())
 
         anchor_layout = arcade.gui.UIAnchorLayout()
 
-        # EDGE CASE FIX : Ajout de marges pour éviter le rognage (clipping)
-        # par les bordures de la fenêtre de l'OS.
         anchor_layout.add(
             child=self.v_box,
             anchor_x="left",
@@ -53,10 +64,12 @@ class StatsView(arcade.View):
         self.manager.add(anchor_layout)
 
     def on_show_view(self):
-        """Appelé automatiquement quand cette vue s'affiche."""
+        """Called when the view is shown.
+
+        Precompute arcade.Text objects used for rendering static UI elements.
+        """
         arcade.set_background_color(arcade.color.CATALINA_BLUE)
 
-        # --- OPTIMISATION : Pré-calcul des objets Text ---
         center_x = self.window.width / 2
         start_y = self.window.height - 120
 
@@ -80,11 +93,14 @@ class StatsView(arcade.View):
         )
 
         stats_string = (
-            f"Final score (total number of turns) : {self.stats.total_turns}\n\n"
+            f"Final score (total number of turns): "
+            f"{self.stats.total_turns}\n\n"
             f"Number of drones : {self.nb_drones}\n"
             f"Total path cost : {self.stats.total_path_cost}\n\n"
-            f"Number of drones moved per turn : {self.avg_moves_per_turn:.2f}\n"
-            f"Average number of turns per drone : {self.avg_turns_per_drone:.2f}"
+            f"Number of drones moved per turn : "
+            f"{self.avg_moves_per_turn:.2f}\n"
+            f"Average number of turns per drone : "
+            f"{self.avg_turns_per_drone:.2f}"
         )
 
         self.stats_text_obj = arcade.Text(
@@ -100,7 +116,10 @@ class StatsView(arcade.View):
         )
 
     def on_draw(self):
-        """Dessine les éléments à l'écran 60 fois par seconde."""
+        """Draw the view contents.
+
+        This method is called at the window's draw rate (typically 60 FPS).
+        """
         self.clear()
 
         self.title_text.draw()

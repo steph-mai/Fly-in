@@ -3,10 +3,10 @@
 #                                                      :::      ::::::::    #
 #  models.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/08 15:33:51 by stephanie       ###   ########.fr        #
+#  Updated: 2026/06/09 15:51:45 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -55,11 +55,13 @@ class MapConfigModel(BaseModel):
         zones_names: set[str] = set()
         seen_zone_coord: set[tuple[int, int]] = set()
         seen_connection: set[tuple[str, str]] = set()
+        zone_defined_at_line: dict[str, int] = {
+            zone.name: zone.line_num for zone in self.zones}
 
         for zone in self.zones:
-            # --- AJOUT MINIMUM : Validation de max_drones avec ligne ---
             if zone.max_drones < 1:
-                raise ValueError(f"Line {zone.line_num}: max_drones must be at least 1.")
+                raise ValueError(
+                    f"Line {zone.line_num}: max_drones must be at least 1.")
 
             if zone.name in zones_names:
                 raise ValueError(f"Line {zone.line_num}: Cannot use the same "
@@ -79,7 +81,8 @@ class MapConfigModel(BaseModel):
             if zone.is_end is True:
                 if zone.zone == 'blocked':
                     raise ValueError(
-                        f"Invalid card: the end_zone is a blocked_zone."
+                        f"Invalid card. Line {zone.line_num}: "
+                        f"the end_zone is a blocked_zone."
                     )
                 end_zone_lines.append(zone.line_num)
 
@@ -107,34 +110,42 @@ class MapConfigModel(BaseModel):
                 )
 
         for connection in self.connections:
-            # --- AJOUT MINIMUM : Validation de max_link_capacity avec ligne ---
+
+            if connection.zone1 not in zone_defined_at_line:
+                raise ValueError(
+                    f"Line {connection.line_num}: '{connection.zone1}' "
+                    f"refers to an unknown zone.")
+            if connection.zone2 not in zone_defined_at_line:
+                raise ValueError(
+                    f"Line {connection.line_num}: '{connection.zone2}' "
+                    f"refers to an unknown zone.")
+
+            if connection.line_num <= zone_defined_at_line[connection.zone1]:
+                raise ValueError(
+                    f"Line {connection.line_num}: '{connection.zone1}' "
+                    f"must be defined before this connection.")
+            if connection.line_num <= zone_defined_at_line[connection.zone2]:
+                raise ValueError(
+                    f"Line {connection.line_num}: '{connection.zone2}' "
+                    f"must be defined before this connection.")
+
             if connection.max_link_capacity < 1:
-                raise ValueError(f"Line {connection.line_num}: max_link_capacity must be at least 1.")
+                raise ValueError(
+                    f"Line {connection.line_num}: "
+                    f"max_link_capacity must be at least 1.")
 
             connection_tuple = (connection.zone1, connection.zone2)
             reverse_connection_tuple = (connection.zone2, connection.zone1)
+            if connection_tuple in seen_connection or (
+                    reverse_connection_tuple in seen_connection):
+                raise ValueError(
+                    f"Line {connection.line_num}: Duplicate connection.")
 
-            if (
-                connection_tuple in seen_connection
-                    or reverse_connection_tuple in seen_connection
-                    ):
-                raise ValueError(f"Line {connection.line_num}: "
-                                 f"The same connection must not appear "
-                                 f"more than once (e.g., a-b and b-a "
-                                 f"are considered duplicates).")
-
-            if connection.zone1 not in zones_names:
-                raise ValueError(f"Line {connection.line_num}: "
-                                 f"'{connection.zone1}' refers to an unknown "
-                                 f"zone.")
-            if connection.zone2 not in zones_names:
-                raise ValueError(f"Line {connection.line_num} "
-                                 f"'{connection.zone2}' refers to an unknown "
-                                 f"zone.")
             if connection.zone1 == connection.zone2:
-                raise ValueError(f"Line {connection.line_num}: A zone cannot "
-                                 f"connect to itself, "
-                                 f"zone1 and zone2 must be different.")
+                raise ValueError(
+                    f"Line {connection.line_num}: "
+                    f"A zone cannot connect to itself.")
+
             seen_connection.add(connection_tuple)
 
         return self

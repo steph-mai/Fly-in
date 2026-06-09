@@ -258,7 +258,8 @@ class Simulation:
                     if neighbor == drone.previous_zone:
                         continue
 
-                    dist_to_end = self.distances_map.get(neighbor, float('inf'))
+                    dist_to_end = (
+                        self.distances_map.get(neighbor, float('inf')))
 
                     move_score = dist_to_end
                     if dist_to_end >= current_dist_to_end:
@@ -345,6 +346,7 @@ class Simulation:
             moves = self.process_turn()
             if moves:
                 print(" ".join(moves))
+
             tour += 1
 
             if tour > 500:

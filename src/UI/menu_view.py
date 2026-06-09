@@ -233,6 +233,7 @@ class MenuView(arcade.View):
         """
         try:
             sim = SimulationFactory.build_from_file(map_path)
+            print("\033[H\033[2J\n")
 
             self.manager.disable()
             simulation_view = MapController(sim=sim)
@@ -242,12 +243,12 @@ class MenuView(arcade.View):
 
         except FlyInError as e:
             print(f"\n\033[91m{e}\033[0m")
-            if arcade.get_window():
-                arcade.close_window()
-            sys.exit(1)
+            self.manager.enable()
+            self.show_main_menu()
 
         except Exception as e:
-            print(f"\n\033[91m[CRITICAL ERROR]\033[0m An unexpected error has occurred.: {e}")
+            print(f"\n\033[91m[CRITICAL ERROR]\033[0m An unexpected error "
+                  f"has occurred.: {e}")
             if arcade.get_window():
                 arcade.close_window()
             sys.exit(1)
