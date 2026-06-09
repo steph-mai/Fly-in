@@ -1,27 +1,39 @@
+"""Map graph utilities for the simulation.
+
+Provides a MapGraph class that represents zones and their bidirectional
+connections with capacities, and utilities to compute shortest-distance
+maps to a target zone using weighted steps depending on zone types.
+"""
 from src.parsing.models import MapConfigModel, Zone
 from collections import defaultdict
 import heapq
 
 
 class MapGraph:
-    """
-    Represents the topography of the map.
-    Handles the adjacency dictionary.
+    """Representation of the map topology and adjacency.
+
+    The MapGraph holds a mapping of zone names to validated Zone objects
+    and constructs a bidirectional adjacency mapping between zones with
+    their maximum link capacities.
+
+    Args:
+        map_config (MapConfigModel): Pydantic-validated map configuration
+            containing zones and connections.
 
     Attributes:
-        zones (dict[str, Zone]): A dictionary mapping zone names to their
-            Pydantic validated Zone objects.
-        graph_adj (dict[str, dict[str, int]]): A bidirectional adjacency
-            dictionary mapping each zone to its connected neighbors and their
-            maximum capacities.
+        zones (dict[str, Zone]): Mapping from zone name to Zone object.
+        graph_adj (dict[str, dict[str, int]]): Adjacency mapping where each
+            zone name maps to a dict of neighbor zone names and their
+            maximum link capacities.
     """
     def __init__(self, map_config: MapConfigModel) -> None:
-        """
-        Initializes the zones dictionary and the graph dictionary.
+        """Initialize the MapGraph.
+
+        Builds the zones mapping and the adjacency graph from the provided
+        map configuration.
 
         Args:
-            map_config (MapConfigModel): The Pydantic validated map
-            configuration.
+            map_config (MapConfigModel): The map configuration model.
         """
         self.zones: dict[str, Zone] = {
             zone.name: zone for zone in map_config.zones
@@ -31,16 +43,18 @@ class MapGraph:
     def _build_graph(
             self, map_config: MapConfigModel
             ) -> dict[str, dict[str, int]]:
-        """
-        Build the bidirectional adjacency graph from the map configuration.
+        """Build a bidirectional adjacency graph from map configuration.
+
+        Each connection in the configuration is inserted in both directions
+        with the connection's max_link_capacity.
 
         Args:
-            map_config (MapConfigModel): The Pydantic validated map
-            configuration.
+            map_config (MapConfigModel): The map configuration containing
+                connection definitions.
 
         Returns:
-            dict[str, dict[str, int]]: A dictionary mapping each zone to its
-                neighbors and their link capacities.
+            dict[str, dict[str, int]]: Adjacency mapping of zone -> (neighbor ->
+                max_link_capacity).
         """
         graph_adjacency: dict[str, dict[str, int]] = defaultdict(dict)
         for connection in map_config.connections:
@@ -51,139 +65,65 @@ class MapGraph:
         return dict(graph_adjacency)
 
     def get_neighbors(self, zone_name: str) -> dict[str, int]:
-        """
-        Get the neighbors and link capacities for a specific zone.
+        """Return neighbors and their capacities for a given zone.
 
         Args:
-            zone_name (str): The name of the zone to look up.
+            zone_name (str): Zone name to query.
 
         Returns:
-            dict[str, int]: A dictionary of neighboring zone names mapping
-                to their maximum link capacity.
+            dict[str, int]: Mapping of neighbor zone names to their maximum
+                link capacity. Returns an empty dict if the zone is unknown.
         """
         neighbors = self.graph_adj.get(zone_name, {})
         return neighbors
 
-    def get_zone_infos(self, zone_name: str) -> Zone | None:
-        """
-        Get metadata information about a specific zone.
+    def build_distances_map(self, end_zone_name: str) -> dict[str, float]:
+        """Compute weighted distances from every reachable zone to end_zone.
+
+        Uses a Dijkstra-like approach (min-heap) starting from the end zone
+        and propagating outward. Step costs depend on the zone type:
+        - 'priority' zones cost 0.5
+        - 'restricted' zones cost 2.0
+        - other zones cost 1.0
+        Zones whose type is 'blocked' are skipped.
 
         Args:
-            zone_name (str): The name of the zone to look up.
+            end_zone_name (str): Name of the destination zone to compute
+                distances to.
 
         Returns:
-            Zone | None: The Zone object containing coordinates and capacities,
-                or None if the zone does not exist.
+            dict[str, float]: Mapping of zone name to the minimal computed
+                distance (float) to reach end_zone_name.
         """
-        infos_zone = self.zones.get(zone_name)
-        return infos_zone
+        distances_to_end_dict: dict[str, float] = {}
 
-    def build_distances_map(self, end_zone_name: str) -> dict[str, float]:
-        # On utilise des float car les distances peuvent être des demi-tours (0.5)
-        distances_dict: dict[str, float] = {}
-
-        # La file de priorité stocke des tuples : (distance_accumulée, nom_de_la_zone)
-        # heapq va automatiquement trier cette liste par la distance la plus petite
         queue: list[tuple[float, str]] = [(0.0, end_zone_name)]
 
         while queue:
-            # On extrait toujours la zone la plus "proche" mathématiquement
-            current_distance, current_zone = heapq.heappop(queue)
+            current_distance_to_end, current_zone = heapq.heappop(queue)
 
-            # Si on a déjà validé cette zone avec un chemin plus court, on l'ignore
-            if current_zone in distances_dict:
+            if current_zone in distances_to_end_dict:
                 continue
 
-            # On verrouille la distance finale pour cette zone
-            distances_dict[current_zone] = current_distance
+            distances_to_end_dict[current_zone] = current_distance_to_end
 
-            # --- CORRECTION DU SENS DU COÛT ---
-            # Quel sera le coût pour un bateau de QUITTER un voisin pour ENTRER ici ?
             current_zone_obj = self.zones.get(current_zone)
             if current_zone_obj.zone == 'priority':
                 step_cost = 0.5
             elif current_zone_obj.zone == 'restricted':
                 step_cost = 2.0
             else:
-                step_cost = 1.0 # Les zones 'normal' (et le hub d'arrivée) coûtent 1
+                step_cost = 1.0
 
             neighbors = self.get_neighbors(current_zone)
             for neighbor in neighbors:
                 neighbor_obj = self.zones.get(neighbor)
 
-                # On ne peut pas traverser une zone bloquée
                 if neighbor_obj.zone == 'blocked':
                     continue
 
-                # Si le voisin n'a pas encore été verrouillé, on propose ce nouveau chemin
-                if neighbor not in distances_dict:
-                    new_distance = current_distance + step_cost
-                    # On pousse la proposition dans la file. heapq fera le tri !
-                    heapq.heappush(queue, (new_distance, neighbor))
+                if neighbor not in distances_to_end_dict:
+                    new_distance_to_end = current_distance_to_end + step_cost
+                    heapq.heappush(queue, (new_distance_to_end, neighbor))
 
-        return distances_dict
-
-    # def find_best_path(
-    #         self,
-    #         start_name: str,
-    #         end_name: str,
-    #         blocked_zones: set[str],
-    #         blocked_connections: set[tuple[str, str]]
-    # ) -> list[str]:
-    #     """
-    #     Find the best path using a Dijkstra algorithm
-
-    #     Args:
-    #         start_name(str): The name of the start zone.
-    #         end_name(str): The name of the end zone.
-    #         blocked_zones(set[str]): includes the names of the inaccessible
-    #         zones.
-
-    #     Return:
-    #         list[str]; The best path from start_zone to end_zone.
-    #     """
-    #     if not blocked_zones:
-    #         blocked_zones: set = set()
-    #     if not blocked_connections:
-    #         blocked_connections: set = set()
-
-    #     if start_name == end_name:
-    #         return [start_name]
-
-    #     if end_name in blocked_zones:
-    #         return []
-
-    #     priority_queue: list[tuple[int, list[str]]] = [(0, [start_name])]
-    #     best_times: dict[str, int] = {start_name: 0}
-
-    #     while priority_queue:
-    #         current_cost, current_path = heapq.heappop(priority_queue)
-    #         current_zone = current_path[-1]
-
-    #         if current_zone == end_name:
-    #             return current_path
-
-    #         if current_cost > best_times.get(current_zone, float('inf')):
-    #             continue
-
-    #         dico_neighbors = self.graph_adj[current_zone]
-    #         for neighbor, link_capacity in dico_neighbors.items():
-    #             if (
-    #                 link_capacity == 0 or
-    #                 neighbor in blocked_zones or
-    #                 (current_zone, neighbor) in blocked_connections
-    #             ):
-    #                 continue
-
-    #             neighbor_obj = self.zones[neighbor]
-    #             if neighbor_obj.zone == "restricted":
-    #                 new_cost = current_cost + 2
-    #             else:
-    #                 new_cost = current_cost + 1
-
-    #             if new_cost < best_times.get(neighbor, float('inf')):
-    #                 best_times[neighbor] = new_cost
-    #                 new_path = list(current_path)
-    #                 new_path.append(neighbor)
-    #                 heapq.heappush(priority_queue, (new_cost, new_path))
-    #     return []
+        return distances_to_end_dict

@@ -11,25 +11,21 @@ class StatsView(arcade.View):
         """
         super().__init__()
         self.stats = stats
-        self.nb_drones = max(1, nb_drones)  # Évite la division par zéro
+        self.nb_drones = max(1, nb_drones)
 
-        # --- CALCUL DES MÉTRIQUES ---
         total_moves = sum(self.stats.moves_per_turn)
         self.avg_moves_per_turn = total_moves / max(1, self.stats.total_turns)
 
         total_active_turns = sum(self.stats.active_turns_per_drone.values())
         self.avg_turns_per_drone = total_active_turns / self.nb_drones
 
-        # --- INTERFACE UTILISATEUR (Bouton) ---
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
 
-        # Création du bouton de retour au menu
         self.v_box = arcade.gui.UIBoxLayout()
         menu_button = arcade.gui.UIFlatButton(text="<- RETURN", width=150)
         self.v_box.add(menu_button)
 
-        # Ce qui se passe quand on clique sur le bouton
         @menu_button.event("on_click")
         def on_click_menu(event):
             self.manager.disable()
@@ -107,10 +103,8 @@ class StatsView(arcade.View):
         """Dessine les éléments à l'écran 60 fois par seconde."""
         self.clear()
 
-        # --- AFFICHAGE OPTIMISÉ (Via la VRAM) ---
         self.title_text.draw()
         self.subtitle_text.draw()
         self.stats_text_obj.draw()
 
-        # Dessine le bouton
         self.manager.draw()

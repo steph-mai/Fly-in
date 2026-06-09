@@ -6,21 +6,30 @@ for the simulation map.
 """
 
 import arcade
-from src.engine.simulation import Simulation
-from typing import Optional
 import math
+from src.engine.simulation import Simulation
+from src.engine.drone import DroneState
+from typing import Optional
 
 
 class MapVisualizer:
-    """
-    Engine responsible for rendering the map, routes, zones, and sprites.
+    """Engine responsible for rendering the map, routes, zones, and sprites.
 
     Attributes:
         sim (Simulation): The active simulation data to render.
-        scale_x (float): Horizontal scaling factor.
-        scale_y (float): Vertical scaling factor.
-        offset_x (float): Horizontal camera offset for centering.
-        offset_y (float): Vertical camera offset for centering.
+        scale_x (float): Horizontal scaling factor from map units to pixels.
+        scale_y (float): Vertical scaling factor from map units to pixels.
+        offset_x (float): Horizontal camera offset for centering the map.
+        offset_y (float): Vertical camera offset for centering the map.
+        base_radius (int): Base radius for zone circles (dynamic).
+        dynamic_font (int): Font size for labels (dynamic).
+        dynamic_text_width (int): Text width for multi-line labels (dynamic).
+        background_list (Optional[arcade.SpriteList]): Background sprites.
+        icon_list (arcade.SpriteList): Zone icon sprites.
+        drone_list (arcade.SpriteList): Drone sprite list.
+        map_labels (dict[str, arcade.Text]): Pre-compiled zone name labels.
+        link_labels (dict[tuple[str, str], arcade.Text]): Pre-compiled
+        connection labels.
     """
 
     def __init__(
@@ -28,15 +37,14 @@ class MapVisualizer:
             simulation: Simulation,
             window_width: int,
             window_height: int) -> None:
-        """
-        Initialize the rendering engine and pre-calculate all visual assets.
+        """Initialize the rendering engine and pre-calculate all visual assets.
 
         Args:
             simulation (Simulation): The active simulation data model.
             window_width (int): The current physical width of the application
-            window.
+                window (in pixels).
             window_height (int): The current physical height of the
-            application window.
+                application window (in pixels).
         """
         self.sim = simulation
 
@@ -46,8 +54,9 @@ class MapVisualizer:
 
         self.background_list: Optional[arcade.SpriteList[arcade.Sprite]] = None
         self.icon_list: arcade.SpriteList[arcade.Sprite] = arcade.SpriteList()
-        self.ship_list: arcade.SpriteList[arcade.Sprite] = arcade.SpriteList()
+        self.drone_list: arcade.SpriteList[arcade.Sprite] = arcade.SpriteList()
         self.map_labels: dict[str, arcade.Text] = {}
+        self.link_labels: dict[tuple[str, str], arcade.Text] = {}
 
         self._calculate_scales(window_width, window_height)
         self._init_background(window_width, window_height)
@@ -55,12 +64,15 @@ class MapVisualizer:
         self._init_sprites()
 
     def _calculate_scales(self, width: int, height: int) -> None:
-        """
-        Calculate drawing scales, offsets, and dynamic element sizes.
+        """Calculate drawing scales, offsets, and dynamic element sizes.
+
+        Computes scaling factors and offsets to map logical coordinates to
+        physical screen pixels, and calculates dynamic font and radius sizes
+        based on available screen space.
 
         Args:
-            width (int): The width of the physical screen area.
-            height (int): The height of the physical screen area.
+            width (int): The width of the physical screen area (in pixels).
+            height (int): The height of the physical screen area (in pixels).
         """
         x_coords = [zone.x for zone in self.sim.map_graph.zones.values()]
         y_coords = [zone.y for zone in self.sim.map_graph.zones.values()]
@@ -91,12 +103,16 @@ class MapVisualizer:
         self.dynamic_text_width = max(45, int(self.scale_x * 0.9))
 
     def _init_background(self, width: int, height: int) -> None:
-        """
-        Load and scale the ocean background sprite.
+        """Load and scale the ocean background sprite.
+
+        Attempts to load the ocean background image and scale it to fit the
+        entire window. On failure, renders without background.
 
         Args:
-            width (int): The target width to scale the background image.
-            height (int): The target height to scale the background image.
+            width (int): The target width to scale the background image
+                (in pixels).
+            height (int): The target height to scale the background image
+                (in pixels).
         """
         try:
             bg_sprite = arcade.Sprite("assets/ocean.jpg")
@@ -112,19 +128,21 @@ class MapVisualizer:
             print(f"Warning: Unable to load the ocean background ({e}).")
 
     def _init_labels(self) -> None:
-        """Pre-generate optimized arcade.Text objects for map labels."""
+        """Pre-generate optimized arcade.Text objects for map and connection
+        labels.
+
+        Creates pre-compiled text objects for zone names and connection
+        capacities to avoid expensive text rendering during the
+        animation loop.
+        """
         for zone_name, zone_obj in self.sim.map_graph.zones.items():
             screen_x, screen_y = self.get_screen_coords(zone_obj.x, zone_obj.y)
 
             if zone_obj.is_start or zone_obj.is_end:
                 radius = self.base_radius
-                # les zones de start et de end dont les plus grosses
             elif zone_obj.zone == "blocked" or "dead" in zone_name:
                 radius = int(self.base_radius * 0.7)
-                # on diminue le rayon des iles bloquees
-                # int force car arcade ne gere pas les demi-pixels
             else:
-                # iles standard un peu + grandes
                 radius = int(self.base_radius * 0.8)
 
             text_margin = radius + 1
@@ -149,7 +167,6 @@ class MapVisualizer:
             )
             self.map_labels[zone_name] = text_obj
 
-        self.link_labels: dict[tuple[str, str], arcade.Text] = {}
         displayed_links = set()
 
         for zone_name in self.sim.map_graph.graph_adj:
@@ -159,17 +176,17 @@ class MapVisualizer:
             for neighbor_name in neighbors:
                 duo_zones = tuple(sorted([zone_name, neighbor_name]))
 
-                # On évite de créer deux labels pour la même route (A-B et B-A)
                 if duo_zones not in displayed_links:
                     zone_to = self.sim.map_graph.zones[neighbor_name]
 
-                    start_x, start_y = self.get_screen_coords(zone_from.x, zone_from.y)
-                    end_x, end_y = self.get_screen_coords(zone_to.x, zone_to.y)
+                    start_x, start_y = self.get_screen_coords(
+                        zone_from.x, zone_from.y)
+                    end_x, end_y = self.get_screen_coords(
+                        zone_to.x, zone_to.y)
 
                     mid_x = (start_x + end_x) / 2
                     mid_y = (start_y + end_y) / 2
 
-                    # Création de l'objet Text pré-compilé en VRAM
                     link_text_obj = arcade.Text(
                         text="",
                         x=mid_x,
@@ -183,7 +200,12 @@ class MapVisualizer:
                     displayed_links.add(duo_zones)
 
     def _init_sprites(self) -> None:
-        """Load all interactive sprites (islands, icons, ships)."""
+        """Load all interactive sprites (island icons and drone drones).
+
+        Loads texture assets for zones (treasure, skull, reef, palm) and drones
+        (drone sprites). Assigns colors and scales based on zone and drone
+        properties.
+        """
         try:
             tex_skull = arcade.load_texture("assets/skull.png")
             tex_rock = arcade.load_texture("assets/reef.png")
@@ -218,40 +240,41 @@ class MapVisualizer:
             print(f"Warning: Missing icon sprites in assets/ ({e})")
 
         try:
-            tex_ship = arcade.load_texture("assets/ship.png")
+            tex_drone = arcade.load_texture("assets/ship.png")
 
-            # On boucle sur la flotte réelle, pas sur les îles !
             for drone in self.sim.drones:
-                ship = arcade.Sprite(tex_ship)
+                drone_sprite = arcade.Sprite(tex_drone)
 
                 distinct_colors = [
-                    arcade.color.BLANCHED_ALMOND, arcade.color.BRILLIANT_LAVENDER, arcade.color.FLAVESCENT,
-                    arcade.color.GLITTER, arcade.color.GRANNY_SMITH_APPLE, arcade.color.LIGHT_SALMON
+                    arcade.color.BLANCHED_ALMOND,
+                    arcade.color.BRILLIANT_LAVENDER,
+                    arcade.color.FLAVESCENT,
+                    arcade.color.GLITTER,
+                    arcade.color.GRANNY_SMITH_APPLE,
+                    arcade.color.LIGHT_SALMON
                 ]
 
                 start_zone = self.sim.map_graph.zones[drone.current_zone]
-                screen_x, screen_y = self.get_screen_coords(start_zone.x, start_zone.y)
-                ship.center_x = screen_x
-                ship.center_y = screen_y
+                screen_x, screen_y = self.get_screen_coords(
+                    start_zone.x, start_zone.y)
+                drone_sprite.center_x = screen_x
+                drone_sprite.center_y = screen_y
 
                 target_width = max(30, self.base_radius * 4)
-                ship.scale = target_width / ship.width
+                drone_sprite.scale = target_width / drone_sprite.width
 
-                ship.color = distinct_colors[drone.id % len(distinct_colors)]
-                # L'ASTUCE ARCHITECTURALE :
-                # On attache la référence du drone mathématique au sprite visuel.
-                # Cela permet au sprite de savoir "qui" il est lors de la mise à jour.
-                ship.drone_ref = drone
+                drone_sprite.color = distinct_colors[drone.id % len(
+                    distinct_colors)]
+                drone_sprite.drone_ref = drone
 
-                self.ship_list.append(ship)
+                self.drone_list.append(drone_sprite)
 
         except Exception as e:
-            print(f"Warning: Missing ship sprite in assets/ ({e})")
+            print(f"Warning: Missing drone sprite in assets/ ({e})")
 
     def get_screen_coords(
             self, zone_x: float, zone_y: float) -> tuple[float, float]:
-        """
-        Convert logical map coordinates to physical screen pixels.
+        """Convert logical map coordinates to physical screen pixels.
 
         Args:
             zone_x (float): The abstract X coordinate from the map graph.
@@ -259,20 +282,22 @@ class MapVisualizer:
 
         Returns:
             tuple[float, float]: A tuple containing the physical (x, y)
-            pixel coordinates.
+                pixel coordinates on screen.
         """
         screen_x = zone_x * self.scale_x + self.offset_x
         screen_y = zone_y * self.scale_y + self.offset_y
         return screen_x, screen_y
 
     def draw_everything(self) -> None:
-        """Execute the full rendering pipeline for the map."""
+        """Execute the full rendering pipeline for the map.
+
+        Renders background, connection lines with occupancy labels, zone
+        circles with names and drone counts, zone icons, and drone sprites.
+        """
 
         if self.background_list:
             self.background_list.draw()
 
-        # on cree un set pour eviter de tracer les routes deux fois, ce qui
-        # fait ramer la carte graphique
         displayed_links = set()
         for zone_name in self.sim.map_graph.graph_adj:
             neighbors = self.sim.map_graph.get_neighbors(zone_name)
@@ -291,26 +316,20 @@ class MapVisualizer:
                         start_x, start_y, end_x, end_y,
                         arcade.color.STEEL_BLUE, line_width=3
                     )
-                    # live coding
+
                     connection_occupancy = (
                         self.sim.connection_occupancy.get(
                             (zone_name, neighbor_name), 0) +
                         self.sim.connection_occupancy.get(
                             (neighbor_name, zone_name), 0))
-                    max_capacities_all_neighbors = self.sim.map_graph.graph_adj.get(zone_name)
-                    max_link_capacity = max_capacities_all_neighbors.get(neighbor_name)
-                    mid_x = (start_x + end_x) / 2
-                    mid_y = (start_y + end_y) / 2
+                    max_capacities_all_neighbors = (
+                        self.sim.map_graph.graph_adj.get(zone_name))
+                    max_link_capacity = (
+                        max_capacities_all_neighbors.get(neighbor_name))
 
-                    # Dans draw_everything(), à la place de arcade.draw_text(...)
-
-                    # 1. On récupère le label pré-compilé pour cette route
                     text_obj = self.link_labels[duo_zones]
-
-                    # 2. On met à jour uniquement la chaîne de caractères (0/1, 1/1...)
-                    text_obj.text = f"{connection_occupancy}/{max_link_capacity}"
-
-                    # 3. On ordonne à la carte graphique de l'afficher instantanément
+                    text_obj.text = (
+                        f"{connection_occupancy}/{max_link_capacity}")
                     text_obj.draw()
 
                     displayed_links.add(duo_zones)
@@ -344,16 +363,15 @@ class MapVisualizer:
             arcade.draw_circle_outline(
                 screen_x, screen_y, radius, arcade.color.DIM_GRAY, 2)
 
-            current_ships_in_zone = 0
-            for ship in self.ship_list:
-                if ship.alpha == 0:
+            current_drones_in_zone = 0
+            for drone_sprite in self.drone_list:
+                if drone_sprite.alpha == 0:
                     continue
-                # Calcul de la distance physique entre le bateau et le centre du hub
-                dist = math.hypot(ship.center_x - screen_x, ship.center_y - screen_y)
-                # Si le bateau est dans le rayon du hub (avec marge pour le jitter)
+                dist = math.hypot(
+                    drone_sprite.center_x - screen_x,
+                    drone_sprite.center_y - screen_y)
                 if dist <= radius + (self.base_radius * 0.5):
-                    current_ships_in_zone += 1
-            # ------------------------------------------------------
+                    current_drones_in_zone += 1
 
             max_drones_in_zone = zone_obj.max_drones
 
@@ -361,66 +379,69 @@ class MapVisualizer:
 
             if "dead" in zone_name or zone_obj.zone == "blocked":
                 label_text = f"{display_zone_name}"
-
             else:
-                label_text = f"{display_zone_name}\n({current_ships_in_zone}/{max_drones_in_zone})"
+                label_text = (
+                    f"{display_zone_name}\n({current_drones_in_zone}/"
+                    f"{max_drones_in_zone})")
 
             text_obj = self.map_labels[zone_name]
             text_obj.text = label_text
             text_obj.draw()
 
         self.icon_list.draw()
-        self.ship_list.draw()
+        self.drone_list.draw()
 
-    def update_ships_animation(self, progress: float) -> None:
-        """
-        Anime les bateaux en douceur entre leur point de départ et d'arrivée.
+    def update_drones_animation(self, process_rate: float) -> None:
+        """Update drone sprite positions and opacity based on animation
+        progress.
+
+        Interpolates drone positions between source and destination zones,
+        accounting for restricted zones which require two turns to traverse.
+        Applies per-drone offsets (jitter) for visual clarity and fades drones
+        as they reach their final destination.
 
         Args:
-            progress (float): Un nombre entre 0.0 (début du tour) et 1.0 (fin du tour).
+            process_rate (float): Animation progress between 0.0 (turn start)
+                and 1.0 (turn end).
         """
 
-        for ship in self.ship_list:
-            drone = ship.drone_ref
+        for drone_sprite in self.drone_list:
+            drone = drone_sprite.drone_ref
 
-            # On utilise incoming_route pour éviter que le bateau ne se téléporte
-            # s'il est au milieu d'un transit de 2 tours.
-            route_start, route_end = getattr(drone, "incoming_route", (drone.previous_zone, drone.current_zone))
+            route_start, route_end = getattr(
+                drone, "incoming_route",
+                (drone.previous_zone, drone.current_zone))
 
             start_zone_obj = self.sim.map_graph.zones[route_start]
             end_zone_obj = self.sim.map_graph.zones[route_end]
 
-            start_x, start_y = self.get_screen_coords(start_zone_obj.x, start_zone_obj.y)
-            end_x, end_y = self.get_screen_coords(end_zone_obj.x, end_zone_obj.y)
+            start_x, start_y = self.get_screen_coords(
+                start_zone_obj.x, start_zone_obj.y)
+            end_x, end_y = self.get_screen_coords(
+                end_zone_obj.x, end_zone_obj.y)
 
-            # --- MODIF 2 : Le calcul du Lerp fractionné ---
-            actual_progress = progress
+            actual_progress = process_rate
             if end_zone_obj.zone == "restricted":
                 if drone.cooldown == 1:
-                    # Tour 1 : 0% à 50% de la ligne
-                    actual_progress = progress * 0.5
+                    actual_progress = process_rate * 0.5
                 else:
-                    # Tour 2 : 50% à 100% de la ligne
-                    actual_progress = 0.5 + (progress * 0.5)
+                    actual_progress = 0.5 + (process_rate * 0.5)
 
-            # 2. L'INTERPOLATION LINÉAIRE (Lerp)
-            # On utilise désormais actual_progress au lieu du progress brut
+            # Linear interpolation (Lerp) between start and end positions
             current_x = start_x + (end_x - start_x) * actual_progress
             current_y = start_y + (end_y - start_y) * actual_progress
 
-            # 3. Le petit décalage (Jitter) pour voir l'essaim
+            # Apply per-drone jitter for visual clarity in swarms
             offset_x = (drone.id % 3 - 1) * (self.base_radius * 0.4)
             offset_y = ((drone.id // 3) % 3 - 1) * (self.base_radius * 0.4)
 
-            ship.center_x = current_x + offset_x
-            ship.center_y = current_y + offset_y
+            drone_sprite.center_x = current_x + offset_x
+            drone_sprite.center_y = current_y + offset_y
 
-            if drone.is_arrived:
+            if drone.state == DroneState.ARRIVED:
                 if drone.previous_zone == drone.current_zone:
-                    # Bateau déjà arrivé aux tours précédents = garé et invisible
-                    ship.alpha = 0
+                    drone_sprite.alpha = 0
                 else:
-                    # Bateau en train d'effectuer son TOUT DERNIER vol !
-                    ship.alpha = max(0, int(255 * (1.0 - progress)))
+                    drone_sprite.alpha = max(0, int(255 * (1.0 - process_rate)))
             else:
-                ship.alpha = 255
+                drone_sprite.alpha = 255
