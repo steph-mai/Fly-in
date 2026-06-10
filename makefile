@@ -11,7 +11,7 @@ install:
 
 run:
 	@$(PYTHON) $(MAIN_SCRIPT) $(MAP)
-
+-
 debug:
 	@$(PYTHON) -m -pdb $(MAIN_SCRIPT) $(MAP)
 

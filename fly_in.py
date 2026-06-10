@@ -3,16 +3,15 @@
 #                                                      :::      ::::::::    #
 #  fly_in.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/08 11:34:10 by stephanie       ###   ########.fr        #
+#  Updated: 2026/06/09 17:36:19 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
 import arcade
 import sys
-# import traceback
 from src.UI.menu_view import MenuView
 from src.parsing.errors import FlyInError
 
@@ -32,15 +31,15 @@ def main() -> None:
         print("\n--- PROGRAM CLOSING ---")
 
     except KeyboardInterrupt:
-        print("\n\033[93m[INFO] User interrupt (Ctrl+C). Program closing...\033[0m", file=sys.stderr)
+        print(
+            "\n\033[93m[INFO] User interrupt (Ctrl+C). "
+            "Program closing...\033[0m", file=sys.stderr)
 
         if arcade.get_window():
             arcade.close_window()
         sys.exit(0)
 
     except FlyInError as e:
-        # --- AJOUT : Filet de sécurité ---
-        # Au cas où une erreur s'échappe du menu ou arrive de manière inattendue
         print(f"\n\033[91m{e}\033[0m")
         if arcade.get_window():
             arcade.close_window()

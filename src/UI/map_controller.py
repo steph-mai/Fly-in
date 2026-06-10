@@ -8,6 +8,7 @@ import arcade
 import arcade.gui
 from src.engine.simulation import Simulation
 from src.UI.map_visualizer import MapVisualizer
+import sys
 
 
 class MapController(arcade.View):
@@ -113,7 +114,8 @@ class MapController(arcade.View):
 
         button_style = {
             "normal": {"bg": arcade.color.COOL_GREY, "fg": arcade.color.BLACK},
-            "hover": {"bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
+            "hover": {
+                "bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
             "press": {"bg": arcade.color.DARK_BLUE, "fg": arcade.color.WHITE}
         }
 
@@ -202,8 +204,11 @@ class MapController(arcade.View):
 
             if self.sim.is_simulation_running():
                 moves = self.sim.process_turn()
+                capacity_infos = self.sim.get_capacity_infos()  # LIVE
                 if moves:
                     print(" ".join(moves))
+                    if sys.argv[1] == "--capacity_info":
+                        print(f" ".join(capacity_infos))  # LIVE
                 self.elapsed_time_since_last_turn -= (
                     self.delay_between_two_turns)
 

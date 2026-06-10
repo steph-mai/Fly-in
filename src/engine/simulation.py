@@ -178,6 +178,16 @@ class Simulation:
 
         return total_drones_in_flight < max_link_capacity
 
+    def get_capacity_infos(self) -> list[str]:  # LIVE
+        capacity_infos: list[str] = []
+        for zone_name in self.map_graph.zones:
+            zone_occupancy = self.hub_occupancy.get(zone_name, 0)
+            zone_obj = self.map_graph.zones[zone_name]
+            zone_capacity = zone_obj.max_drones
+            zone_infos = f"{zone_name}: {zone_occupancy}/{zone_capacity}"
+            capacity_infos.append(zone_infos)
+        return capacity_infos
+
     def process_turn(self) -> list[str]:
         """Execute a single simulation turn and move all eligible drones.
 
@@ -232,17 +242,20 @@ class Simulation:
 
         has_freed_space = True
 
+        waiting_penality = 1.5
+        moving_sideways_penality = 1
+
         while has_freed_space:
 
             has_freed_space = False
 
             for drone in drones_to_process[:]:
 
-                best_next_zone = None
                 current_dist_to_end = self.distances_map.get(
                     drone.current_zone, float('inf'))
 
-                immobility_score = current_dist_to_end + 1.5
+                best_score = current_dist_to_end + waiting_penality
+                best_next_zone = None
 
                 for neighbor in self.map_graph.get_neighbors(
                         drone.current_zone):
@@ -260,12 +273,13 @@ class Simulation:
 
                     dist_to_end = (
                         self.distances_map.get(neighbor, float('inf')))
+                    move_score = dist_to_end + (
+                        moving_sideways_penality if (
+                            dist_to_end >= current_dist_to_end)
+                        else 0)
 
-                    move_score = dist_to_end
-                    if dist_to_end >= current_dist_to_end:
-                        move_score += (dist_to_end - current_dist_to_end + 1)
-
-                    if move_score < immobility_score:
+                    if move_score < best_score:
+                        best_score = move_score
                         best_next_zone = neighbor
 
                 if not best_next_zone:
