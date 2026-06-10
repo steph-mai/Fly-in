@@ -242,8 +242,8 @@ class Simulation:
 
         has_freed_space = True
 
-        waiting_penality = 1.5
-        moving_sideways_penality = 1
+        waiting_penalty = 1.5
+        moving_sideways_penalty = 1
 
         while has_freed_space:
 
@@ -254,7 +254,7 @@ class Simulation:
                 current_dist_to_end = self.distances_map.get(
                     drone.current_zone, float('inf'))
 
-                best_score = current_dist_to_end + waiting_penality
+                best_score = current_dist_to_end + waiting_penalty
                 best_next_zone = None
 
                 for neighbor in self.map_graph.get_neighbors(
@@ -274,7 +274,7 @@ class Simulation:
                     dist_to_end = (
                         self.distances_map.get(neighbor, float('inf')))
                     move_score = dist_to_end + (
-                        moving_sideways_penality if (
+                        moving_sideways_penalty if (
                             dist_to_end >= current_dist_to_end)
                         else 0)
 

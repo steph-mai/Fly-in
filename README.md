@@ -8,93 +8,96 @@
 
 # Fly-in
 ![Language](https://img.shields.io/badge/Language-python-blue)
-![Static Badge](https://img.shields.io/badge/parsing-pink)
+![Static Badge](https://img.shields.io/badge/Rigor-pink)
+![Static Badge](https://img.shields.io/badge/Algorithms_&_IA-pink)
+![Static Badge](https://img.shields.io/badge/Graphics-pink)
 
-A 42 school project: Design and implement an efficient drone routing system that navigates multiple autonomous drones from a central base to a target location through a dynamic network.
 
 ## 🔵 Description
 
 ### ✳️ Goal
-Develop an intelligent drone routing system that efficiently manages multiple autonomous drones navigating through a dynamic network of zones. The system must optimize pathfinding while respecting zone constraints (priority zones, restricted zones, blocked zones) and managing concurrent drone movements.
+Design and implement an efficient multi-agent drone routing system that navigates autonomous drones from a central base to a target location through a dynamic network, optimizing for minimal simulation turns while handling real-world constraints.
 
 ### ✳️ Overview
-The Fly-in project simulates a multi-agent pathfinding system where drones must navigate from a starting zone to a target zone through an interconnected network. The system uses an inverted Dijkstra algorithm to pre-calculate optimal paths and implements a turn-based movement system that handles zone capacities, movement penalties, and priority-based drone ordering.
+The Fly-in project simulates a turn-based multi-agent pathfinding system where drones navigate interconnected zones from start to destination. The system leverages an **inverted Dijkstra algorithm** to pre-calculate optimal distances, enabling real-time decision-making through simple local comparisons. Each turn processes drone movements while respecting zone capacities, movement penalties, priority-based ordering, and restricted zone logic—demonstrating practical solutions to concurrent pathfinding challenges.
+
+### ✳️ Key Features
+- **Pre-calculated pathfinding**: Inverted Dijkstra from destination
+- **Multi-agent coordination**: Priority-based sorting
+- **Network constraints**: Zone capacities, movement penalties, blocked/restricted zones
+- **Real-time visualization**: Arcade-based interface
 
 ## 🔵 Instructions
 
 ### ✳️ Prerequisites
 
-- Python 3.10 or later.
-- uv (high-performance Python package manager).
+- Python 3.10 or later
+- uv (high-performance Python package manager)
 
 ### ✳️ Installation
 
 The project uses uv for dependency management and isolation. To set up the environment and install necessary packages (arcade, pydantic, flake8, mypy, pytest):
 
-```Bash
+```bash
 # Install dependencies and create virtual environment
 uv sync
 ```
-Using the Makefile:
+
+Or using the Makefile:
+
 ```bash
 make install
 ```
+
 ### ✳️ Execution
 
-* ### Using the Makefile (Recommended)
-```Bash
-# Run with default paths (data/input/ and data/output/)
+**1. Run the Simulation (Recommended)**
+
+```bash
 make run
 ```
-Clean cache and temporary files (__pycache__, .mypy_cache, etc.)
 
-```
-make clean
-```
+**2. Manual Execution via uv**
 
-* ### Manual Execution via uv
-**1. Default execution**
-```Bash
-uv run python -m src
+```bash
+uv run python fly_in.py
 ```
 
-**2. Development & Quality Control**
-In accordance with the 42 curriculum standards, the project adheres to strict coding rules:
+**3. Code Quality & Linting**
 
-Linting: Both flake8 and mypy are used to ensure PEP 8 compliance and strict type safety.
+In accordance with the 42 curriculum standards, the project adheres to strict coding rules using flake8 and mypy for PEP 8 compliance and type safety.
 
-```Bash
-make lint        # Standard check
-make lint-strict # Enhanced strict checking
+```bash
+# Standard linting
+make lint
+
+# Strict type checking
+make lint-strict
 ```
 
-**3. Debugging**
-To run the script in debug mode with pdb:
+**4. Debugging**
 
-```Bash
+Run with Python debugger (pdb):
+
+```bash
 make debug
 ```
 
-**4. Testing**
-While not graded, a suite of tests is included to verify the constrained decoding logic:
+**5. Testing**
 
-```Bash
+Run the test suite (not graded but verifies core logic):
+
+```bash
 make test
 ```
 
-## 🔵 Resources
+**6. Cleanup**
 
-### ✳️ References
-- Dijkstra's Algorithm: Classic pathfinding in weighted graphs
-- Multi-agent pathfinding systems and conflict resolution
-- Graph theory and network topology optimization
-- Heap-based priority queues (Python heapq)
+Remove cache and temporary files:
 
-### ✳️ AI Usage
-AI was used to:
-- **Debugging**: Problem analysis for edge cases in drone movement logic
-- **Documentation**: Assistance in clarifying algorithm explanations and README structure
-- **Testing**: Generation of unit test cases for the Dijkstra implementation
+```bash
+make clean
+```
 
 ## 🔵 Algorithm Explanation
 
@@ -104,8 +107,8 @@ The simulation engine uses an inverted Dijkstra implementation to pre-calculate 
 This approach enables real-time decision-making for each drone, transforming complex pathfinding into simple local distance comparisons at each turn.
 
 **Complexity Analysis:**
-- **Time Complexity**: $O(Z \log Z + E)$ where $Z$ is the number of zones and $E$ is the number of connections
-- **Space Complexity**: $O(Z)$ for storing zone distances
+- $O(Z \log Z + C)$ where $Z$ is the number of zones and $C$ is the number of connections
+
 
 ### ✳️ Turn Processing Algorithm
 
@@ -130,11 +133,34 @@ Each simulation turn follows this process:
 - Dictionary operations: $O(1)$
 - **Overall**: $O(D \log D + D \cdot V)$
 
-### ✳️ Visual Representation Features
+
+## 🔵 Visual Representation Features
 The project includes arcade-based visualization that enhances user experience by:
-- **Real-time rendering** of drone movements through the network
-- **Color-coded zones** indicating zone type (priority, restricted, blocked, normal)
-- **Animated drone transitions** showing pathfinding decisions
+- **Dynamic Scaling:** Automatic coordinate mapping to fit any window size.
+ - **Drone animation:** smooth interpolation between zones, small offsets to avoid overlaps, fade-out on arrival; restricted zones show extended traversal visually.-
+ - **Zone display:** color-coded circles with icons (start/end/blocked/restricted) and live counts (current / max).
+- **Connections:** lines with real-time occupancy / capacity labels shown on links.
 - **Statistics overlay** displaying turn count, arrived drones, and network status
 
+These visuals provide immediate feedback on congestion, bottlenecks and routing decisions, improving usability and analysis.
+
+## 🔵 Resources
+
+### ✳️ References
+- Dijkstra's Algorithm: Classic pathfinding in weighted graphs
+    - https://www.w3schools.com/dsa/dsa_algo_graphs_dijkstra.php
+    - https://www.maths-cours.fr/methode/algorithme-de-dijkstra-etape-par-etape#google_vignette
+- Graph theory and network topology optimization
+    - https://fr.wikipedia.org/wiki/Th%C3%A9orie_des_graphes
+    - https://www.apprendre-en-ligne.net/graphes/graphes.pdf
+- Heap-based priority queues (Python heapq)
+    - https://docs.python.org/3/library/heapq.html
+
+### ✳️ AI Usage
+Artificial Intelligence was used as a support tool to improve documentation and code quality.
+
+- **Refactoring:** helped simplify class structure and improve modularity.
+- **Algorithm description:** clarified graph theory and pathfinding concepts.
+- **Debugging:** helped detect edge cases and potential issues in drone movement.
+- **Writing:** helped translate this readme into English.
 

@@ -141,7 +141,7 @@ def test_duplicate_connection_identical(valid_map_data):
     """Tests rejection of identically duplicated connections (e.g., A-B and A-B)."""
     valid_map_data["connections"].append(valid_map_data["connections"][0].copy())
 
-    with pytest.raises(ValidationError, match="The same connection must not appear more than once"):
+    with pytest.raises(ValidationError, match="Duplicate connection"):
         MapConfigModel(**valid_map_data)
 
 
@@ -151,7 +151,7 @@ def test_duplicate_connection_reversed(valid_map_data):
         "zone1": "relais", "zone2": "depart", "max_link_capacity": 5, "line_num": 99
     })
 
-    with pytest.raises(ValidationError, match="The same connection must not appear more than once"):
+    with pytest.raises(ValidationError, match="Duplicate connection"):
         MapConfigModel(**valid_map_data)
 
 
