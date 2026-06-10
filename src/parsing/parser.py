@@ -6,12 +6,12 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/04 11:53:52 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/10 16:41:41 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
-
 from typing import Any
 import re
+from src.parsing.errors import MapSyntaxError
 
 
 class MapParser:
@@ -24,21 +24,18 @@ class MapParser:
     """
     def __init__(self) -> None:
         self.hub_pattern = re.compile(
-            r"^\s*(start_hub|end_hub|hub):\s*"
-            r"([^\s\-]+)\s+"
-            r"(-?\d+)\s+"
+            r"^\s*(start_hub|end_hub|hub):\s"
+            r"([^\s\-]+)\s"
+            r"(-?\d+)\s"
             r"(-?\d+)"
-            r"(?:\s+\[(.*?)\])?\s*$"
+            r"(?:\s\[([a-z_]+=[a-zA-Z0-9]+(?:\s[a-z_]+=[a-zA-Z0-9]+)*)\])?\s*$"
             )
 
         self.connection_pattern = re.compile(
-            r"^\s*connection:\s*"
+            r"^\s*connection:\s"
             r"([^\s\-]+)-([^\s\-]+)"
-            r"(?:\s+\[(.*?)\])?\s*$"
+            r"(?:\s\[([a-z_]+=[a-zA-Z0-9]+(?:\s[a-z_]+=[a-zA-Z0-9]+)*)\])?\s*$"
             )
-        # ?) (avec le point d'interrogation) :
-        #  moteur devient paresseux. Il va avancer caractère par caractère
-        #  s'arrêter au tout premier crochet fermant qu'il trouve.
         self.metadata_pattern = re.compile(r"([a-z_]+)=([a-zA-Z_0-9]+)")
 
     def parse(self, raw_input: str) -> dict[str, Any]:
@@ -90,18 +87,19 @@ class MapParser:
             dict[str, Any]: The fully dictionary representation of the map.
 
         Raises:
-            ValueError: If the file is empty or contains formatting errors.
+            MapSyntaxError: If the file is empty or contains formatting errors.
         """
         if not clean_lines:
-            raise ValueError("Line 1: The map file is empty.")
+            raise MapSyntaxError("Line 1: The map file is empty.")
 
         first_line_num, first_line = clean_lines[0]
 
         if not first_line.startswith("nb_drones:"):
-            raise ValueError(
+            raise MapSyntaxError(
                 f"Line {first_line_num}: The first line must define the "
                 "number of drones using nb_drones: <positive_integer>"
             )
+
         raw_value = first_line.split(":")[1].strip()
         try:
             value = int(raw_value)
@@ -136,7 +134,7 @@ class MapParser:
                 raw_dict["zones"].append(zone_dict)
 
             else:
-                raise ValueError(
+                raise MapSyntaxError(
                     f"Line {line_num}: Invalid key in '{clean_line}'."
                     f"Authorized keys are "
                     f"'start_hub:', 'hub:', 'end_hub:', 'connection:'"
@@ -158,10 +156,9 @@ class MapParser:
         """
         match = self.connection_pattern.match(line)
         if match is None:
-            raise ValueError(
-                f"Line {line_num}: Syntax error in connection entry '{line}'. "
+            raise MapSyntaxError(
+                f"Line {line_num}: Invalid connection: '{line}'. "
                 "Usage = connection: <name1>-<name2> [metadata]. "
-                "Dashes forbidden."
             )
 
         name1, name2, raw_metadata = match.groups()
@@ -174,14 +171,14 @@ class MapParser:
         if raw_metadata:
             supposed_metadata = raw_metadata.split()
             if len(supposed_metadata) > 1:
-                raise ValueError(f"Line {line_num}: 'max_link_capacity' "
-                                 f"is the only valid metadata key")
+                raise MapSyntaxError(f"Line {line_num}: 'max_link_capacity' "
+                                     f"is the only valid metadata key")
 
             connection_pattern = r"^(max_link_capacity)=([\d]+)"
             match_metadata = re.fullmatch(
                 connection_pattern, supposed_metadata[0])
             if not match_metadata:
-                raise ValueError(
+                raise MapSyntaxError(
                     f"Line {line_num}: Invalid metadata syntax. "
                     "Usage: 'max_link_capacity=integer'."
                 )
@@ -205,10 +202,9 @@ class MapParser:
         """
         match = self.hub_pattern.match(line)
         if not match:
-            raise ValueError(
+            raise MapSyntaxError(
                 f"Line {line_num}: Syntax error in hub entry '{line}'. "
                 "Usage = hub: <name> <x> <y> [metadata]."
-                "Dashes forbidden."
             )
 
         hub_type, name, x, y, raw_metadata = match.groups()
@@ -223,31 +219,57 @@ class MapParser:
         zone_dict['max_drones'] = 1
 
         if raw_metadata:
+            if raw_metadata:
+                if "  " in raw_metadata:
+                    raise MapSyntaxError(
+                        f"Line {line_num}: Multiple spaces "
+                        f"detected in metadata.")
+            raw__metadata_list = raw_metadata.split(" ")
+            if '[' in raw_metadata or ']' in raw_metadata:
+                raise MapSyntaxError(
+                    f"Line {line_num}: invalid metadata syntax "
+                    f"'[{raw_metadata}]': multiple "
+                    f"metadata blocks or malformed brackets"
+                )
             raw__metadata_list = raw_metadata.split()
             authorized_metadata = ["color", "max_drones", "zone"]
+            seen_metadata = set()
 
             for supposed_metadata in raw__metadata_list:
                 match_metadata = self.metadata_pattern.fullmatch(
                     supposed_metadata)
                 if not match_metadata:
-                    raise ValueError(f"Line {line_num}: Invalid metadata "
-                                     F"syntax '{supposed_metadata}' "
-                                     f"Usage: 'key=value'")
+                    raise MapSyntaxError(f"Line {line_num}: Invalid metadata "
+                                         f"syntax '{supposed_metadata}' "
+                                         f"Usage: 'key=value'")
                 key, value = match_metadata.groups()
+                if key in seen_metadata:
+                    raise MapSyntaxError(
+                        f"Line {line_num}: duplicate metadata. "
+                        f"{supposed_metadata} is invalid."
+                    )
                 if key in authorized_metadata:
                     zone_dict[key] = value
                 else:
-                    raise ValueError(f"Line {line_num}: "
-                                     f"Forbidden metadata key "
-                                     f"'{key}'.")
+                    raise MapSyntaxError(f"Line {line_num}: "
+                                         f"Forbidden metadata key "
+                                         f"'{key}'.")
+                seen_metadata.add(key)
 
             if "color" in zone_dict:
-                clean_color = zone_dict["color"].strip().upper()
-                if clean_color == "DARKRED":
-                    clean_color = "DARK_RED"
-                if clean_color == "RAINBOW":
-                    clean_color = "LAVENDER"
-                zone_dict["color"] = clean_color
+                raw_color = zone_dict["color"]
+
+                if isinstance(raw_color, str):
+                    clean_color = raw_color.strip().upper()
+
+                    if clean_color == "DARKRED":
+                        clean_color = "DARK_RED"
+                    elif clean_color == "RAINBOW":
+                        clean_color = "LAVENDER"
+
+                    zone_dict["color"] = clean_color
+                else:
+                    zone_dict.pop("color", None)
 
         zone_dict["line_num"] = line_num
 

@@ -6,14 +6,14 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/21 14:06:26 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/04 13:26:28 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/10 15:51:24 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
 import arcade
 import sys
-import traceback
-from src.menu_view import MenuView
+from src.UI.menu_view import MenuView
+from src.parsing.errors import FlyInError
 
 
 def main() -> None:
@@ -31,17 +31,23 @@ def main() -> None:
         print("\n--- PROGRAM CLOSING ---")
 
     except KeyboardInterrupt:
-        print("\n\033[93m[INFO] User interrupt (Ctrl+C). Shutdown in progress...\033[0m", file=sys.stderr)
+        print("\n\033[93m[INFO] User interrupt "
+              "(Ctrl+C). Program closing...\033[0m", file=sys.stderr)
 
         if arcade.get_window():
             arcade.close_window()
-        # Code d'erreur POSIX standard pour SIGINT (128 + 2)
-        sys.exit(130)
+        sys.exit(0)
+
+    except FlyInError as e:
+        print(f"\n\033[91m{e}\033[0m")
+        if arcade.get_window():
+            arcade.close_window()
+        sys.exit(1)
 
     except Exception as e:
         print(f"\033[91m[FATAL ERROR]\033[0m {e}")
-        traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

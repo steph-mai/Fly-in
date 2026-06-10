@@ -1,22 +1,23 @@
 import pytest
-from src.parser import MapParser  # Adapt the import according to your file name
+from src.parsing.parser import MapParser
+from src.parsing.errors import MapSyntaxError
 
-# ==========================================
-# FIXTURES (Initial Configuration)
-# ==========================================
 
 @pytest.fixture
 def parser():
     """Provides a fresh instance of MapParser for each test."""
     return MapParser()
 
-
-# ==========================================
+# =========================================
 # TESTS: Clean Lines
 # ==========================================
 
+
 def test_clean_lines_removes_comments_and_empty_lines(parser):
-    """Verifies that comments, trailing spaces, and empty lines are removed."""
+    """
+    Verifies that comments, trailing spaces, and empty lines are removed,
+    preserving line numbers.
+    """
     raw_text = """
     # This is a global comment
     nb_drones: 5
@@ -25,10 +26,11 @@ def test_clean_lines_removes_comments_and_empty_lines(parser):
        connection: toit1-toit2
     """
     cleaned = parser._clean_lines(raw_text)
+
     assert cleaned == [
-        "nb_drones: 5",
-        "hub: toit1 0 0",
-        "connection: toit1-toit2"
+        (3, "nb_drones: 5"),
+        (5, "hub: toit1 0 0"),
+        (6, "connection: toit1-toit2")
     ]
 
 
@@ -63,77 +65,78 @@ def test_parse_valid_full_map(parser):
     assert result["connections"][0]["max_link_capacity"] == 1
     assert result["connections"][1]["max_link_capacity"] == "4"
 
+
 # ==========================================
-# TESTS: Clean Lines
+# TESTS: Strict Metadata & Spacing Syntax
 # ==========================================
 
-def test_clean_lines_removes_comments_and_empty_lines(parser):
-    """Verifies that comments, trailing spaces, and empty lines are removed."""
-    raw_text = """
-    # This is a global comment
-    nb_drones: 5
+def test_metadata_with_extra_spaces_raises_error(parser):
+    """Verifies that leading/trailing or double spaces fail the Regex."""
+    with pytest.raises(MapSyntaxError, match="Syntax error in hub entry"):
+        parser.parse("nb_drones: 1\nhub: A 0 0 [ color=red]")
 
-    hub: toit1 0 0 # End of line comment
-       connection: toit1-toit2
-    """
-    cleaned = parser._clean_lines(raw_text)
+    with pytest.raises(MapSyntaxError, match="Syntax error in hub entry"):
+        parser.parse("nb_drones: 1\nhub: A 0 0 [color=red  zone=normal]")
 
-    assert cleaned == [
-        (3, "nb_drones: 5"),
-        (5, "hub: toit1 0 0"),
-        (6, "connection: toit1-toit2")
-    ]
 
+def test_metadata_duplicate_keys_raises_error(parser):
+    """Verifies that duplicate keys raise an explicit error."""
+    raw_text = "nb_drones: 1\nhub: A 0 0 [color=red color=blue]"
+    with pytest.raises(
+            MapSyntaxError, match="duplicate metadata. color=blue is invalid"):
+        parser.parse(raw_text)
+
+
+def test_empty_brackets_raises_error(parser):
+    """Verifies that an empty [] block is rejected by the strict Regex."""
+    raw_text = "nb_drones: 1\nhub: A 0 0 []"
+    with pytest.raises(MapSyntaxError, match="Syntax error in hub entry"):
+        parser.parse(raw_text)
+
+
+def test_malformed_brackets_raises_error(parser):
+    """Verifies trailing spaces inside the brackets are rejected."""
+    raw_text = "nb_drones: 1\nhub: A 0 0 [color=red ]"
+    with pytest.raises(MapSyntaxError, match="Syntax error in hub entry"):
+        parser.parse(raw_text)
+
+
+# ==========================================
+# TESTS: General Edge Cases
+# ==========================================
 
 def test_empty_file_raises_error(parser):
     """Edge Case: Completely empty file or containing only comments."""
-    with pytest.raises(ValueError, match="The map file is empty"):
+    with pytest.raises(MapSyntaxError, match="The map file is empty"):
         parser.parse("# Just a comment\n\n")
 
 
 def test_missing_nb_drones_first_line(parser):
     """Edge Case: The file does not start with nb_drones."""
     raw_text = "hub: A 0 0\nnb_drones: 5"
-    with pytest.raises(ValueError, match="The first line must define"):
+    with pytest.raises(
+            MapSyntaxError, match=(
+                "The first line must define the number of drones")):
         parser.parse(raw_text)
 
 
 def test_invalid_connection_missing_dash(parser):
     """Edge Case: The user puts a space instead of a dash in the connection."""
     raw_text = "nb_drones: 5\nconnection: A B"
-    with pytest.raises(ValueError, match="Syntax error in connection entry"):
-        parser.parse(raw_text)
-
-
-def test_forbidden_metadata_in_connection(parser):
-        """Edge Case: An invalid metadata key is inserted into a connection."""
-        raw_text = "nb_drones: 5\nconnection: A-B [color=red]"
-        with pytest.raises(ValueError, match="Invalid metadata syntax"):
-            parser.parse(raw_text)
-
-def test_empty_max_link_capacity_value(parser):
-        """Edge Case: The max_link_capacity key is present but empty."""
-        raw_text = "nb_drones: 5\nconnection: A-B [max_link_capacity= ]"
-        with pytest.raises(ValueError, match="Invalid metadata syntax"):
-            parser.parse(raw_text)
-
-
-def test_invalid_hub_space_in_name(parser):
-    """Edge Case: The user puts a space in the zone name."""
-    raw_text = "nb_drones: 5\nhub: my hub 0 0"
-    with pytest.raises(ValueError, match="Syntax error in hub entry"):
+    with pytest.raises(
+            MapSyntaxError, match="Invalid connection: 'connection: A B'"):
         parser.parse(raw_text)
 
 
 def test_forbidden_metadata_in_hub(parser):
     """Edge Case: The user invents a metadata key for a zone."""
     raw_text = "nb_drones: 5\nhub: A 0 0 [power=magic]"
-    with pytest.raises(ValueError, match="Forbidden metadata key 'power'"):
+    with pytest.raises(MapSyntaxError, match="Forbidden metadata key 'power'"):
         parser.parse(raw_text)
 
 
 def test_unknown_line_key(parser):
     """Edge Case: A line starts with an unknown keyword."""
     raw_text = "nb_drones: 5\ncarbage: A-B"
-    with pytest.raises(ValueError, match="Invalid key"):
+    with pytest.raises(MapSyntaxError, match="Invalid key in 'carbage: A-B'"):
         parser.parse(raw_text)

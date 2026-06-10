@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  menu_view.py                                      :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:40:09 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:41:06 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """
 Menu view module for the Fly-In simulation.
 
@@ -8,9 +19,11 @@ and specific map files using the Arcade GUI system.
 from pathlib import Path
 import arcade
 import arcade.gui
-from src.map_controller import MapController
-from src.simulation_factory import SimulationFactory  # NOUVEL IMPORT
+from src.UI.map_controller import MapController
+from src.parsing.simulation_factory import SimulationFactory
 from typing import Optional, Any, cast
+from src.parsing.errors import FlyInError
+import sys
 
 
 class MenuView(arcade.View):
@@ -100,9 +113,9 @@ class MenuView(arcade.View):
         Clear the current layout and populate it with difficulty selection
         buttons.
         """
-        # On masque temporairement le type réel de l'objet pour Mypy
         cast(Any, self.anchor_layout).clear()
-        h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+        horizontal_box = arcade.gui.UIBoxLayout(
+            vertical=False, space_between=20)
         difficulties = ["easy", "medium", "hard", "challenger"]
 
         for diff in difficulties:
@@ -117,16 +130,45 @@ class MenuView(arcade.View):
                 event: arcade.gui.UIEvent,
                 d: str = diff
             ) -> None:
-                self.show_map_menu(d)
-            # En écrivant d=diff, Python fige et sauvegarde la valeur propre
-            # à chaque bouton au moment exact où il est créé (le bouton Easy
-            # sauvegarde "easy", le bouton Medium sauvegarde "medium", etc.).
-            h_box.add(button)
+                self.show_submenu(d)
+            horizontal_box.add(button)
 
         self.anchor_layout.add(
-            child=h_box, anchor_x="center_x", anchor_y="bottom", align_y=60)
+            child=horizontal_box,
+            anchor_x="center_x",
+            anchor_y="bottom",
+            align_y=60)
 
-    def show_map_menu(self, difficulty: str) -> None:
+        exit_style = {
+            "normal": {
+                "bg": arcade.color.PERSIAN_PLUM, "fg": arcade.color.WHITE},
+            "hover": {
+                "bg": arcade.color.PERSIAN_RED, "fg": arcade.color.WHITE},
+            "press": {
+                "bg": arcade.color.PERSIAN_ORANGE, "fg": arcade.color.WHITE}
+        }
+
+        exit_button = arcade.gui.UIFlatButton(
+            text="EXIT", width=150, height=45, style=exit_style
+        )
+
+        @exit_button.event("on_click")
+        def on_click_quit(event: arcade.gui.UIEvent) -> None:
+            import sys
+            print(
+                "\n\033[93m[INFO] End of game. Program closing...\033[0m",
+                file=sys.stderr)
+            arcade.close_window()
+            sys.exit(0)
+        self.anchor_layout.add(
+            child=exit_button,
+            anchor_x="right",
+            anchor_y="top",
+            align_x=-20,
+            align_y=-20
+        )
+
+    def show_submenu(self, difficulty: str) -> None:
         """
         Scan the corresponding difficulty folder and list all available maps.
 
@@ -134,7 +176,6 @@ class MenuView(arcade.View):
             difficulty (str): The folder name to scan within the 'maps'
             directory.
         """
-        # On masque temporairement le type réel de l'objet pour Mypy
         cast(Any, self.anchor_layout).clear()
         h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
 
@@ -147,7 +188,7 @@ class MenuView(arcade.View):
             label = arcade.gui.UILabel(
                 text="No card found",
                 font_size=16,
-                font_color=arcade.color.WHITE)
+                text_color=arcade.color.WHITE)
             h_box.add(label)
         else:
             for map_path in sorted(map_files):
@@ -181,7 +222,6 @@ class MenuView(arcade.View):
             self.show_main_menu()
 
         h_box.add(back_button)
-        h_box.add(back_button)
 
         self.anchor_layout.add(
             child=h_box, anchor_x="center_x", anchor_y="bottom", align_y=60)
@@ -194,20 +234,27 @@ class MenuView(arcade.View):
         Args:
             map_path (Path): The explicit path to the selected map file.
         """
-        # On demande à la Factory de fabriquer l'instance de simulation
-        sim, error_msg = SimulationFactory.build_from_file(map_path)
+        try:
+            sim = SimulationFactory.build_from_file(map_path)
+            print("\033[H\033[2J\n")
 
-        # Si l'usine a rencontré une erreur, on l'affiche et on reste sur le menu
-        if error_msg:
-            print(error_msg)
-            return
-
-        # Si la simulation est valide, on passe à l'affichage
-        if sim:
             self.manager.disable()
             simulation_view = MapController(sim=sim)
+
             if self.window:
                 self.window.show_view(simulation_view)
+
+        except FlyInError as e:
+            print(f"\n\033[91m{e}\033[0m")
+            self.manager.enable()
+            self.show_main_menu()
+
+        except Exception as e:
+            print(f"\n\033[91m[CRITICAL ERROR]\033[0m An unexpected error "
+                  f"has occurred.: {e}")
+            if arcade.get_window():
+                arcade.close_window()
+            sys.exit(1)
 
     def on_draw(self) -> None:
         """Render the background sprite, the cinematic title, and all UI
