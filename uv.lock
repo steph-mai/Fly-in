@@ -202,18 +202,26 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "arcade" },
+    { name = "pydantic" },
+]
+
+[package.dev-dependencies]
+dev = [
     { name = "flake8" },
     { name = "mypy" },
-    { name = "pydantic" },
     { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "arcade" },
+    { name = "arcade", specifier = ">=2.6.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "flake8" },
     { name = "mypy" },
-    { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest" },
 ]
 
