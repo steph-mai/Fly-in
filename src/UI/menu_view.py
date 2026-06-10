@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  menu_view.py                                      :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:40:09 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:41:06 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """
 Menu view module for the Fly-In simulation.
 
@@ -102,7 +113,6 @@ class MenuView(arcade.View):
         Clear the current layout and populate it with difficulty selection
         buttons.
         """
-        # On masque temporairement le type réel de l'objet pour Mypy
         cast(Any, self.anchor_layout).clear()
         horizontal_box = arcade.gui.UIBoxLayout(
             vertical=False, space_between=20)
@@ -121,9 +131,6 @@ class MenuView(arcade.View):
                 d: str = diff
             ) -> None:
                 self.show_submenu(d)
-            # En écrivant d=diff, Python fige et sauvegarde la valeur propre
-            # à chaque bouton au moment exact où il est créé (le bouton Easy
-            # sauvegarde "easy", le bouton Medium sauvegarde "medium", etc.).
             horizontal_box.add(button)
 
         self.anchor_layout.add(
@@ -186,10 +193,6 @@ class MenuView(arcade.View):
         else:
             for map_path in sorted(map_files):
                 button = arcade.gui.UIFlatButton(
-                    # stem = fonctionnalité du module path
-                    # permet d'extraire uniquement le nom de base du fichier,
-                    # en coupant à la fois le chemin du dossier qui le précède,
-                    # et l'extension qui le suit.
                     text=map_path.stem,
                     width=180,
                     height=45,

@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  simulation_factory.py                             :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:37:25 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:37:42 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Module responsible for building the Simulation instance from map files."""
 
 from pathlib import Path
@@ -48,7 +59,8 @@ class SimulationFactory:
             raise
         except ValidationError as e:
             error = e.errors()[0]
-            clean_message: str = str(error["msg"]).replace("Value error,", "").strip()
+            clean_message: str = str(
+                error["msg"]).replace("Value error,", "").strip()
             raise MapLogicalError(clean_message)
         except ValueError as e:
             raise MapLogicalError(str(e))

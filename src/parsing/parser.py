@@ -3,13 +3,12 @@
 #                                                      :::      ::::::::    #
 #  parser.py                                         :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: stephanie <stephanie@student.42.fr>       +#+  +:+       +#+         #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:40 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/08 15:02:14 by stephanie       ###   ########.fr        #
+#  Updated: 2026/06/10 16:41:41 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
-
 from typing import Any
 import re
 from src.parsing.errors import MapSyntaxError
@@ -37,9 +36,6 @@ class MapParser:
             r"([^\s\-]+)-([^\s\-]+)"
             r"(?:\s\[([a-z_]+=[a-zA-Z0-9]+(?:\s[a-z_]+=[a-zA-Z0-9]+)*)\])?\s*$"
             )
-        # ?) (avec le point d'interrogation) :
-        #  moteur devient paresseux. Il va avancer caractère par caractère
-        #  s'arrêter au tout premier crochet fermant qu'il trouve.
         self.metadata_pattern = re.compile(r"([a-z_]+)=([a-zA-Z_0-9]+)")
 
     def parse(self, raw_input: str) -> dict[str, Any]:
@@ -249,7 +245,8 @@ class MapParser:
                 key, value = match_metadata.groups()
                 if key in seen_metadata:
                     raise MapSyntaxError(
-                        f"Line {line_num}: duplicate metadata. {supposed_metadata} is invalid."
+                        f"Line {line_num}: duplicate metadata. "
+                        f"{supposed_metadata} is invalid."
                     )
                 if key in authorized_metadata:
                     zone_dict[key] = value
@@ -260,12 +257,19 @@ class MapParser:
                 seen_metadata.add(key)
 
             if "color" in zone_dict:
-                clean_color = zone_dict["color"].strip().upper()
-                if clean_color == "DARKRED":
-                    clean_color = "DARK_RED"
-                if clean_color == "RAINBOW":
-                    clean_color = "LAVENDER"
-                zone_dict["color"] = clean_color
+                raw_color = zone_dict["color"]
+
+                if isinstance(raw_color, str):
+                    clean_color = raw_color.strip().upper()
+
+                    if clean_color == "DARKRED":
+                        clean_color = "DARK_RED"
+                    elif clean_color == "RAINBOW":
+                        clean_color = "LAVENDER"
+
+                    zone_dict["color"] = clean_color
+                else:
+                    zone_dict.pop("color", None)
 
         zone_dict["line_num"] = line_num
 

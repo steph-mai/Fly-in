@@ -1,5 +1,17 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  stats_view.py                                     :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:41:23 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 17:28:04 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 import arcade
 import arcade.gui
+from src.engine.simulation import SimulationStats
 
 
 class StatsView(arcade.View):
@@ -15,7 +27,7 @@ class StatsView(arcade.View):
         stats_text_obj (arcade.Text): Precomputed statistics text object.
     """
 
-    def __init__(self, stats, nb_drones: int):
+    def __init__(self, stats: SimulationStats, nb_drones: int):
         """Initialize the stats view.
 
         Args:
@@ -41,7 +53,7 @@ class StatsView(arcade.View):
         self.v_box.add(menu_button)
 
         @menu_button.event("on_click")
-        def on_click_menu(event):
+        def on_click_menu(event: arcade.gui.UIEvent) -> None:
             self.manager.disable()
 
             print("\033[H\033[2J", end="")
@@ -63,7 +75,7 @@ class StatsView(arcade.View):
         )
         self.manager.add(anchor_layout)
 
-    def on_show_view(self):
+    def on_show_view(self) -> None:
         """Called when the view is shown.
 
         Precompute arcade.Text objects used for rendering static UI elements.
@@ -115,7 +127,7 @@ class StatsView(arcade.View):
             width=600
         )
 
-    def on_draw(self):
+    def on_draw(self) -> None:
         """Draw the view contents.
 
         This method is called at the window's draw rate (typically 60 FPS).

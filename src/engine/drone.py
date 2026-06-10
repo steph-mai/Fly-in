@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  drone.py                                          :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:35:27 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:35:28 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Module defining drone primitives for the simulation.
 
 Provides DroneState enum and Drone class used by the engine.

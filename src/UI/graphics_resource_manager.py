@@ -1,9 +1,27 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  graphics_resource_manager.py                      :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:38:20 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 17:35:38 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Management of sprites, textures, and pre-compiled text objects."""
 
 import arcade
-from typing import Optional
+from typing import Optional, Any
 from src.engine.simulation import Simulation
 from src.UI.coordinate_mapper import CoordinateMapper
+
+
+class DroneSprite(arcade.Sprite):
+    """A subclass of Sprite to include a reference to the Drone object."""
+    def __init__(self, texture: arcade.Texture, drone_ref: Any) -> None:
+        super().__init__(texture)
+        self.drone_ref = drone_ref
 
 
 class GraphicsResourceManager:
@@ -18,34 +36,34 @@ class GraphicsResourceManager:
         link_labels (dict): Pre-compiled connection labels.
     """
 
-    def __init__(self, sim: Simulation, mapper: CoordinateMapper) -> None:
+    def __init__(self, sim: Simulation, mapper: CoordinateMapper,
+                 width: int, height: int) -> None:
         self.sim = sim
         self.mapper = mapper
 
-        self.background_list: Optional[arcade.SpriteList] = None
-        self.icon_list: arcade.SpriteList = arcade.SpriteList()
-        self.drone_list: arcade.SpriteList = arcade.SpriteList()
+        self.background_list: Optional[arcade.SpriteList[arcade.Sprite]] = None
+        self.icon_list: arcade.SpriteList[arcade.Sprite] = arcade.SpriteList()
+        self.drone_list: arcade.SpriteList[arcade.Sprite] = arcade.SpriteList()
         self.map_labels: dict[str, arcade.Text] = {}
         self.link_labels: dict[tuple[str, str], arcade.Text] = {}
 
-        self._init_background(0, 0)
+        self._init_background(width, height)
         self._init_labels()
         self._init_sprites()
 
     def _init_background(self, width: int, height: int) -> None:
         """Load and scale the ocean background sprite."""
-        try:
-            bg_sprite = arcade.Sprite("assets/ocean.jpg")
-            bg_sprite.center_x = width / 2
-            bg_sprite.center_y = height / 2
-            bg_sprite.width = width
-            bg_sprite.height = height
-            bg_sprite.alpha = 70
-
-            self.background_list = arcade.SpriteList()
-            self.background_list.append(bg_sprite)
-        except Exception as e:
-            print(f"Warning: Unable to load ocean background ({e}).")
+        self.background_list = arcade.SpriteList()
+        background_texture = arcade.load_texture("assets/ocean.jpg")
+        bg_sprite = arcade.Sprite(
+            background_texture,
+            center_x=width / 2,
+            center_y=height / 2,
+        )
+        bg_sprite.width = width
+        bg_sprite.height = height
+        bg_sprite.alpha = 70
+        self.background_list.append(bg_sprite)
 
     def _init_labels(self) -> None:
         """Pre-generate optimized arcade.Text objects for labels."""
@@ -83,7 +101,8 @@ class GraphicsResourceManager:
             zone_from = self.sim.map_graph.zones[zone_name]
 
             for neighbor_name in neighbors:
-                duo_zones = tuple(sorted([zone_name, neighbor_name]))
+                sorted_zones = sorted([zone_name, neighbor_name])
+                duo_zones: tuple[str, str] = (sorted_zones[0], sorted_zones[1])
 
                 if duo_zones not in displayed_links:
                     zone_to = self.sim.map_graph.zones[neighbor_name]
@@ -98,12 +117,12 @@ class GraphicsResourceManager:
                     link_text_obj = arcade.Text(
                         text="",
                         x=mid_x,
-                        y=mid_y + 15,
-                        color=arcade.color.BLACK,
-                        font_size=10,
+                        y=mid_y + 10,
+                        color=arcade.color.RED_BROWN,
+                        font_size=self.mapper.dynamic_font,
                         anchor_x="center",
-                        anchor_y="center"
-                    )
+                        anchor_y="center",
+                        italic=True)
                     self.link_labels[duo_zones] = link_text_obj
                     displayed_links.add(duo_zones)
 
@@ -127,16 +146,18 @@ class GraphicsResourceManager:
                     icon.color = arcade.color.DIM_GRAY
                 elif zone_obj.zone == "restricted":
                     icon = arcade.Sprite(tex_rock)
-                elif not zone_obj.is_start:
+                elif zone_obj.zone == "priority":
                     icon = arcade.Sprite(tex_palm)
 
                 if icon:
                     icon.center_x = screen_x
                     icon.center_y = screen_y
                     scale_multiplier = (
-                        1.1 if icon.texture in [tex_palm, tex_rock] else 1.4)
+                        1.1 if icon.texture in [
+                            tex_palm, tex_rock] else 1.4)
                     icon.scale = (
-                        self.mapper.base_radius * scale_multiplier) / icon.width
+                        self.mapper.base_radius * scale_multiplier) / (
+                        icon.width)
                     self.icon_list.append(icon)
 
         except Exception as e:
@@ -146,7 +167,7 @@ class GraphicsResourceManager:
             tex_drone = arcade.load_texture("assets/ship.png")
 
             for drone in self.sim.drones:
-                drone_sprite = arcade.Sprite(tex_drone)
+                drone_sprite = DroneSprite(tex_drone, drone)
 
                 distinct_colors = [
                     arcade.color.BLANCHED_ALMOND,
@@ -168,7 +189,6 @@ class GraphicsResourceManager:
 
                 drone_sprite.color = distinct_colors[drone.id % len(
                     distinct_colors)]
-                drone_sprite.drone_ref = drone
 
                 self.drone_list.append(drone_sprite)
 

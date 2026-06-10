@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  map_controller.py                                 :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:38:44 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:55:16 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Map view module for the Fly-In simulation.
 
 Acts as the controller between the simulation data, the UI elements,
@@ -113,7 +124,8 @@ class MapController(arcade.View):
 
         button_style = {
             "normal": {"bg": arcade.color.COOL_GREY, "fg": arcade.color.BLACK},
-            "hover": {"bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
+            "hover": {
+                "bg": arcade.color.CORNFLOWER_BLUE, "fg": arcade.color.WHITE},
             "press": {"bg": arcade.color.DARK_BLUE, "fg": arcade.color.WHITE}
         }
 

@@ -10,10 +10,10 @@ install:
 	@uv sync
 
 run:
-	@$(PYTHON) $(MAIN_SCRIPT) $(MAP)
+	@$(PYTHON) $(MAIN_SCRIPT)
 
 debug:
-	@$(PYTHON) -m -pdb $(MAIN_SCRIPT) $(MAP)
+	@$(PYTHON) -m -pdb $(MAIN_SCRIPT)
 
 clean:
 	@echo "Remove temporary files or cache."

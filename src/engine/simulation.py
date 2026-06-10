@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  simulation.py                                     :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:35:50 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 18:12:59 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 from src.engine.map_graph import MapGraph
 from src.parsing.models import MapConfigModel
 from src.engine.drone import Drone, DroneState
@@ -51,8 +62,8 @@ class Simulation:
         """
         self.total_drones = map_config.nb_drones
         self.map_graph = MapGraph(map_config)
-        self.hub_occupancy = {}
-        self.connection_occupancy = {}
+        self.hub_occupancy: dict[str, int] = {}
+        self.connection_occupancy: dict[tuple[str, str], int] = {}
         self.stats = SimulationStats()
 
         self._setup_simulation()
@@ -103,7 +114,7 @@ class Simulation:
 
         self.hub_occupancy[self.start_zone_name] = self.total_drones
 
-        self.distances_map: dict[str, int] = (
+        self.distances_map = (
             self.map_graph.build_distances_map(self.end_zone_name))
         start_distance = self.distances_map.get(
             self.start_zone_name, float('inf'))
@@ -222,7 +233,7 @@ class Simulation:
                 drone.cooldown -= 1
                 connection_name = getattr(
                     drone, "current_connection", (
-                        f"{drone.previous_zone}_{drone.current_zone}"))
+                        f"{drone.previous_zone}-{drone.current_zone}"))
                 turn_moves.append(f"D{drone.id}-{connection_name}")
                 moves_this_turn += 1
                 self.stats.total_path_cost += 1
@@ -252,6 +263,10 @@ class Simulation:
                         continue
 
                     neighbor_obj = self.map_graph.zones.get(neighbor)
+
+                    if not neighbor_obj:
+                        continue
+
                     if neighbor_obj.zone == "blocked":
                         continue
 
@@ -277,7 +292,7 @@ class Simulation:
                 next_zone = best_next_zone
                 previous_zone = drone.current_zone
                 drone.previous_zone = previous_zone
-                drone.current_connection = f"{previous_zone}_{next_zone}"
+                drone.current_connection = f"{previous_zone}-{next_zone}"
 
                 self.hub_occupancy[next_zone] = (
                     self.hub_occupancy.get(next_zone, 0) + 1)

@@ -6,10 +6,9 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/05/26 17:40:32 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/09 15:51:45 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/10 15:36:19 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Literal
 
@@ -24,27 +23,27 @@ before initializing the simulation.
 
 class Zone(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    name: str  # Retrait de min_length=1 (déjà garanti par ton Regex de parsing)
+    name: str
     x: int
     y: int
     is_start: bool
     is_end: bool
     zone: Literal['normal', 'blocked', 'restricted', 'priority'] = 'normal'
     color: str | None = None
-    max_drones: int = 1  # Retrait de ge=1
+    max_drones: int = 1
     line_num: int = Field(exclude=True)
 
 
 class Connection(BaseModel):
-    zone1: str  # Retrait de min_length=1
-    zone2: str  # Retrait de min_length=1
-    max_link_capacity: int  # Retrait de ge=1
+    zone1: str
+    zone2: str
+    max_link_capacity: int
     line_num: int = Field(exclude=True)
 
 
 class MapConfigModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    nb_drones: int  # Retrait de ge=1 (déjà géré par ton parser)
+    nb_drones: int
     zones: list[Zone]
     connections: list[Connection]
 

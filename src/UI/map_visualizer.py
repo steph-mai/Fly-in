@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  map_visualizer.py                                 :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:39:47 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 17:43:44 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Map rendering orchestrator."""
 
 import arcade
@@ -22,18 +33,18 @@ class MapVisualizer:
         self.sim = simulation
         self.geometric_mapper = CoordinateMapper(
             simulation, window_width, window_height)
-        self.graphical_resources = GraphicsResourceManager(
-            simulation, self.geometric_mapper)
+        self.resources = GraphicsResourceManager(
+            simulation, self.geometric_mapper, window_width, window_height)
 
     def draw_everything(self) -> None:
         """Execute the full rendering pipeline."""
-        if self.graphical_resources.background_list:
-            self.graphical_resources.background_list.draw()
+        if self.resources.background_list:
+            self.resources.background_list.draw()
 
         self._draw_connections()
         self._draw_zones()
-        self.graphical_resources.icon_list.draw()
-        self.graphical_resources.drone_list.draw()
+        self.resources.icon_list.draw()
+        self.resources.drone_list.draw()
 
     def _draw_connections(self) -> None:
         """Render connection lines and occupancy labels."""
@@ -43,7 +54,8 @@ class MapVisualizer:
             zone_from = self.sim.map_graph.zones[zone_name]
 
             for neighbor_name in neighbors:
-                duo_zones = tuple(sorted([zone_name, neighbor_name]))
+                sorted_zones = sorted([zone_name, neighbor_name])
+                duo_zones: tuple[str, str] = (sorted_zones[0], sorted_zones[1])
                 if duo_zones not in displayed_links:
                     zone_to = self.sim.map_graph.zones[neighbor_name]
                     start_x, start_y = self.geometric_mapper.get_screen_coords(
@@ -63,9 +75,10 @@ class MapVisualizer:
                             (neighbor_name, zone_name), 0))
                     max_capacities = self.sim.map_graph.graph_adj.get(
                         zone_name)
-                    max_link_capacity = max_capacities.get(neighbor_name)
+                    if max_capacities is not None:
+                        max_link_capacity = max_capacities.get(neighbor_name)
 
-                    text_obj = self.graphical_resources.link_labels[duo_zones]
+                    text_obj = self.resources.link_labels[duo_zones]
                     text_obj.text = (
                         f"{connection_occupancy}/{max_link_capacity}")
                     text_obj.draw()
@@ -104,7 +117,7 @@ class MapVisualizer:
                     f"{display_zone_name}\n({current_drones_in_zone}/"
                     f"{max_drones_in_zone})")
 
-            text_obj = self.graphical_resources.map_labels[zone_name]
+            text_obj = self.resources.map_labels[zone_name]
             text_obj.text = label_text
             text_obj.draw()
 
@@ -112,7 +125,7 @@ class MapVisualizer:
                               radius: int) -> int:
         """Count visible drones within a zone."""
         count = 0
-        for drone_sprite in self.graphical_resources.drone_list:
+        for drone_sprite in self.resources.drone_list:
             if drone_sprite.alpha == 0:
                 continue
             dist = math.hypot(
@@ -135,9 +148,8 @@ class MapVisualizer:
                 and 1.0 (turn end).
         """
 
-        for drone_sprite in self.graphical_resources.drone_list:
-            drone = drone_sprite.drone_ref
-
+        for drone_sprite in self.resources.drone_list:
+            drone = drone_sprite.drone_ref  # type: ignore
             route_start, route_end = getattr(
                 drone, "incoming_route",
                 (drone.previous_zone, drone.current_zone))
@@ -157,12 +169,11 @@ class MapVisualizer:
                 else:
                     actual_progress = 0.5 + (process_rate * 0.5)
 
-            # Linear interpolation (Lerp) between start and end positions
             current_x = start_x + (end_x - start_x) * actual_progress
             current_y = start_y + (end_y - start_y) * actual_progress
 
-            # Apply per-drone jitter for visual clarity in swarms
-            offset_x = (drone.id % 3 - 1) * (self.geometric_mapper.base_radius * 0.4)
+            offset_x = (
+                drone.id % 3 - 1) * (self.geometric_mapper.base_radius * 0.4)
             offset_y = (
                 (drone.id // 3) % 3 - 1) * (
                     self.geometric_mapper.base_radius * 0.4)

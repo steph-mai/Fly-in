@@ -1,3 +1,14 @@
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  coordinate_mapper.py                              :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/06/10 15:37:57 by stmaire         #+#    #+#               #
+#  Updated: 2026/06/10 15:37:59 by stmaire         ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 """Coordinate mapping and geometric calculations for the map visualization.
 
 Provides CoordinateMapper to convert logical map coordinates to screen pixels

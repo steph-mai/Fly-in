@@ -53,8 +53,8 @@ class MapGraph:
                 connection definitions.
 
         Returns:
-            dict[str, dict[str, int]]: Adjacency mapping of zone -> (neighbor ->
-                max_link_capacity).
+            dict[str, dict[str, int]]: Adjacency mapping of zone ->
+            (neighbor -> max_link_capacity).
         """
         graph_adjacency: dict[str, dict[str, int]] = defaultdict(dict)
         for connection in map_config.connections:
@@ -108,6 +108,10 @@ class MapGraph:
             distances_to_end_dict[current_zone] = current_distance_to_end
 
             current_zone_obj = self.zones.get(current_zone)
+
+            if current_zone_obj is None:
+                continue
+
             if current_zone_obj.zone == 'priority':
                 step_cost = 0.5
             elif current_zone_obj.zone == 'restricted':
@@ -119,6 +123,8 @@ class MapGraph:
             for neighbor in neighbors:
                 neighbor_obj = self.zones.get(neighbor)
 
+                if neighbor_obj is None:
+                    continue
                 if neighbor_obj.zone == 'blocked':
                     continue
 
