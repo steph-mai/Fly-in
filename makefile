@@ -2,9 +2,7 @@ PYTHON = uv run python
 MAIN_SCRIPT = fly_in.py
 MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
-.PHONY: all install run debug clean lint lint-strict test
-
-all: install
+.PHONY: install run debug clean lint lint-strict test
 
 install:
 	@uv sync
