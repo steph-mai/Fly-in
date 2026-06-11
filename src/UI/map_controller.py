@@ -207,8 +207,11 @@ class MapController(arcade.View):
                 capacity_infos = self.sim.get_capacity_infos()  # LIVE
                 if moves:
                     print(" ".join(moves))
-                    if sys.argv[1] == "--capacity_info":
-                        print(f" ".join(capacity_infos))  # LIVE
+
+                if len(sys.argv) > 1 and sys.argv[1] == "--capacity_info":
+                    infos = " ".join(capacity_infos)
+                    print(f"{infos}")  # LIVE
+
                 self.elapsed_time_since_last_turn -= (
                     self.delay_between_two_turns)
 

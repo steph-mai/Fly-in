@@ -179,13 +179,21 @@ class Simulation:
         return total_drones_in_flight < max_link_capacity
 
     def get_capacity_infos(self) -> list[str]:  # LIVE
-        capacity_infos: list[str] = []
-        for zone_name in self.map_graph.zones:
-            zone_occupancy = self.hub_occupancy.get(zone_name, 0)
-            zone_obj = self.map_graph.zones[zone_name]
-            zone_capacity = zone_obj.max_drones
-            zone_infos = f"{zone_name}: {zone_occupancy}/{zone_capacity}"
-            capacity_infos.append(zone_infos)
+        capacity_infos = []
+
+        for zone_name, zone_obj in self.map_graph.zones.items():
+            zone_occ = self.hub_occupancy.get(zone_name, 0)
+            zone_max = zone_obj.max_drones
+            if zone_occ != 0:
+                zone_info = f"{zone_name}: {zone_occ}/{zone_max}"
+                capacity_infos.append(zone_info)
+
+        for (zone1, zone2), occupancy in self.connection_occupancy.items():
+            neighbors_zone1 = self.map_graph.get_neighbors(zone1)
+            max_occupancy = neighbors_zone1.get(zone2, 0)
+            zone_info = f"{zone1}-{zone2}: {occupancy}/{max_occupancy}"
+            capacity_infos.append(zone_info)
+
         return capacity_infos
 
     def process_turn(self) -> list[str]:
