@@ -6,7 +6,7 @@
 #  By: stmaire <stmaire@student.42.fr>           +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/06/10 15:35:50 by stmaire         #+#    #+#               #
-#  Updated: 2026/06/10 18:12:59 by stmaire         ###   ########.fr        #
+#  Updated: 2026/06/11 11:29:49 by stmaire         ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 from src.engine.map_graph import MapGraph
@@ -249,11 +249,10 @@ class Simulation:
 
             for drone in drones_to_process[:]:
 
-                best_next_zone = None
                 current_dist_to_end = self.distances_map.get(
                     drone.current_zone, float('inf'))
-
-                immobility_score = current_dist_to_end + 1.5
+                best_score = current_dist_to_end + 1.5
+                best_next_zone = None
 
                 for neighbor in self.map_graph.get_neighbors(
                         drone.current_zone):
@@ -280,7 +279,8 @@ class Simulation:
                     if dist_to_end >= current_dist_to_end:
                         move_score += (dist_to_end - current_dist_to_end + 1)
 
-                    if move_score < immobility_score:
+                    if move_score < best_score:
+                        best_score = move_score
                         best_next_zone = neighbor
 
                 if not best_next_zone:
