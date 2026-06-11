@@ -107,8 +107,9 @@ The simulation engine uses an inverted Dijkstra implementation to pre-calculate 
 This approach enables real-time decision-making for each drone, transforming complex pathfinding into simple local distance comparisons at each turn.
 
 **Complexity Analysis:**
-- $O(Z \log Z + C)$ where $Z$ is the number of zones and $C$ is the number of connections
+- Time Complexity: $O((Z + C)\log Z)$ using a binary heap priority queue (heapq), where $Z$ is the number of zones and $C$ is the number of connections.
 
+- Space Complexity: $O(Z)$ for storing the distances map.
 
 ### ✳️ Turn Processing Algorithm
 
